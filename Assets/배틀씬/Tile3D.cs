@@ -12,6 +12,7 @@ public class Tile3D : MonoBehaviour
     [Tooltip("타일의 윗부분을 수평으로 밀어 평행사변형을 만듭니다. (Shear)")]
     [Range(-1f, 1f)]
     public float shearAmount = 0.0f;
+    public bool isWalkable = true;
 
     // 이 타일의 고유한 머티리얼 인스턴스를 저장하여 외부에 공개하는 프로퍼티입니다.
     public Material MyMaterial { get; private set; }

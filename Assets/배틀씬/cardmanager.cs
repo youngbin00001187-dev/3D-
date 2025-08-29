@@ -1,168 +1,53 @@
-using System.Collections;
+ï»¿using UnityEngine;
 using System.Collections.Generic;
+using System.Collections;
 using System.Linq;
-using UnityEngine;
-using UnityEngine.UI;
-using static GameManager;
+using DG.Tweening;
 
+/// <summary>
+/// í”Œë ˆì´ì–´ì˜ ì¹´ë“œ ë±, í•¸ë“œ, ë²„ë¦° ì¹´ë“œ ë”ë¯¸ë¥¼ ê´€ë¦¬í•˜ê³ ,
+/// ì¹´ë“œ ì‚¬ìš© ë¡œì§ ë° UI ìƒí˜¸ì‘ìš©ì„ ì²˜ë¦¬í•©ë‹ˆë‹¤.
+/// </summary>
 public class CardManager : MonoBehaviour
 {
     public static CardManager instance;
 
-    [Header("UI ¿¬°á")]
-    public GameObject cardUiPrefab;
-    public Transform handTransform;
+    [Header("UI ì—°ê²°")]
+    public Transform handPanelTransform;
+    public GameObject cardUIPrefab;
     public Transform actionPanelTransform;
-    public Button proceedButton;
 
-    [Header("ÂüÁ¶ ¿¬°á")]
-    public PlayerController playerController;
-    public LayerMask tileLayerMask;
+    [HideInInspector] public PlayerController playerController;
 
-    // --- Ä«µå µ¦ °ü·Ã º¯¼öµé ---
-    private List<CardDataSO> drawPile = new List<CardDataSO>();
-    private List<CardDataSO> hand = new List<CardDataSO>();
-    private List<CardDataSO> discardPile = new List<CardDataSO>();
-    private List<GameObject> handUiObjects = new List<GameObject>();
-    private List<CardDataSO> actionCards = new List<CardDataSO>();
-    private List<GameObject> actionCardUiObjects = new List<GameObject>();
+    private List<CardDataSO> _playerDeck;
+    private List<CardDataSO> _discardPile;
+    private List<CardDataSO> _currentHand;
 
-    // --- ÀüÅõ ±ÔÄ¢ °ü·Ã º¯¼öµé ---
-    private int handSize;
-    private int mulligansLeft;
-    private int playerMaxActionsPerTurn;
-    private bool isInitialized = false;
+    private int _handSize;
+    private int _mulligansPerTurn;
+    private int _maxActionsPerTurn;
+    private int _remainingMulligans;
 
-    // --- Å¸°ÙÆÃ ¹× ÇÏÀÌ¶óÀÌÆ® °ü·Ã º¯¼öµé ---
-    private CardDataSO selectedCardForTargeting;
-    private List<Tile3D> _targetingHighlightTiles = new List<Tile3D>();
-    private List<Tile3D> _hoverHighlightTiles = new List<Tile3D>();
-    private List<Tile3D> _aoePreviewTiles = new List<Tile3D>();
-    private Tile3D _lastHoveredTile;
+    // í˜„ì¬ íƒ€ê²ŸíŒ… ì¤‘ì¸ ì¹´ë“œ
+    private CardDataSO _targetingCard;
+    private GameObject _targetingCardUIObject;
+
+    private HighlightManager _highlightManager;
+    private List<Tile3D> _currentPreviewTiles = new List<Tile3D>();
+    private bool _isPreviewSuppressedByHover = false;
+    private Dictionary<GameObject, CardDataSO> _selectedCards = new Dictionary<GameObject, CardDataSO>();
 
     void Awake()
     {
         if (instance == null) { instance = this; }
         else { Destroy(gameObject); }
     }
-    private void Start()
-    {
-        // 'ÁøÇà' ¹öÆ°ÀÌ ´­·ÈÀ» ¶§ OnProceedButtonClicked ÇÔ¼ö°¡ È£ÃâµÇµµ·Ï µî·ÏÇÕ´Ï´Ù.
-        if (proceedButton != null)
-        {
-            proceedButton.onClick.AddListener(OnProceedButtonClicked);
-        }
-    }
-    void Update()
-    {
-        if (GameManager.instance == null || playerController == null) return;
-
-        // Å¸°ÙÆÃ ¸ğµåÀÏ ¶§(¾×¼Ç ÆĞ³Î¿¡ Ä«µå°¡ ÀÖÀ» ¶§)¸¸ Å¸ÀÏ È£¹ö¸¦ °¨ÁöÇÕ´Ï´Ù.
-        // ÀÌ ±â´ÉÀº ¸ğµç ÆäÀÌÁî¿¡¼­ ÀÛµ¿ÇÕ´Ï´Ù.
-        if (selectedCardForTargeting != null)
-        {
-            HandleTileHoverForAoePreview();
-        }
-
-        // '¾×¼Ç ½ÇÇà' ÆäÀÌÁîÀÏ ¶§¸¸ Å¸ÀÏ Å¬¸¯ ÀÔ·ÂÀ» ¹Ş½À´Ï´Ù.
-        if (GameManager.instance.currentPhase == GameManager.BattlePhase.ActionExecution)
-        {
-            if (Input.GetMouseButtonDown(0))
-            {
-                HandleTileClick();
-            }
-        }
-    }
-
-    private void HandleTileHoverForAoePreview()
-    {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-        Tile3D currentHoveredTile = null;
-
-        // µğ¹ö±×: ·¹ÀÌÄ³½ºÆ®°¡ Á¦´ë·Î ÀÛµ¿ÇÏ´ÂÁö È®ÀÎ
-        Debug.DrawRay(ray.origin, ray.direction * 100f, Color.red, 0.1f);
-
-        if (Physics.Raycast(ray, out hit, Mathf.Infinity, tileLayerMask))
-        {
-            currentHoveredTile = hit.collider.GetComponent<Tile3D>();
-
-            // µğ¹ö±×: ¾î¶² ¿ÀºêÁ§Æ®¿¡ È÷Æ®Çß´ÂÁö È®ÀÎ
-            Debug.Log($"<color=cyan>[AOE Preview] ·¹ÀÌÄ³½ºÆ® È÷Æ®: {hit.collider.name}, Tile3D ÄÄÆ÷³ÍÆ®: {(currentHoveredTile != null ? "ÀÖÀ½" : "¾øÀ½")}</color>");
-        }
-        else
-        {
-            // µğ¹ö±×: ·¹ÀÌÄ³½ºÆ®°¡ ¾Æ¹«°Íµµ È÷Æ®ÇÏÁö ¾ÊÀ» ¶§
-            Debug.Log($"<color=orange>[AOE Preview] ·¹ÀÌÄ³½ºÆ® È÷Æ® ¾øÀ½. LayerMask: {tileLayerMask.value}</color>");
-        }
-
-        // ¸¶¿ì½º°¡ ´Ù¸¥ Å¸ÀÏ·Î ¿òÁ÷¿´´Ù¸é
-        if (currentHoveredTile != _lastHoveredTile)
-        {
-            Debug.Log($"<color=yellow>[AOE Preview] Å¸ÀÏ º¯°æ: {(_lastHoveredTile?.name ?? "null")} -> {(currentHoveredTile?.name ?? "null")}</color>");
-
-            // 1. ±âÁ¸¿¡ ÀÖ´ø AOE ¹Ì¸®º¸±â ÇÏÀÌ¶óÀÌÆ®¸¦ Áö¿ó´Ï´Ù.
-            ClearAoePreviewHighlight();
-
-            // 2. »õ·Î È£¹öÇÑ Å¸ÀÏÀÌ 'Á¶ÁØ °¡´É ¹üÀ§'(_targetingHighlightTiles) ¾È¿¡ ÀÖ´Ù¸é,
-            if (currentHoveredTile != null && _targetingHighlightTiles.Contains(currentHoveredTile))
-            {
-                Debug.Log($"<color=green>[AOE Preview] À¯È¿ÇÑ Å¸°Ù Å¸ÀÏ¿¡ È£¹ö: {currentHoveredTile.name}</color>");
-                // 3. ±× Å¸ÀÏÀ» Áß½ÉÀ¸·Î AOE ¹Ì¸®º¸±â¸¦ µ¡±×¸³´Ï´Ù.
-                ShowAoePreviewHighlight(currentHoveredTile);
-            }
-            else if (currentHoveredTile != null)
-            {
-                Debug.Log($"<color=red>[AOE Preview] À¯È¿ÇÏÁö ¾ÊÀº Å¸°Ù Å¸ÀÏ: {currentHoveredTile.name}. Å¸°ÙÆÃ ÇÏÀÌ¶óÀÌÆ® Å¸ÀÏ ¼ö: {_targetingHighlightTiles.Count}</color>");
-
-                // µğ¹ö±×: Å¸°ÙÆÃ ÇÏÀÌ¶óÀÌÆ® Å¸ÀÏµéÀÇ ÀÌ¸§À» Ãâ·Â
-                for (int i = 0; i < _targetingHighlightTiles.Count; i++)
-                {
-                    Debug.Log($"  - Å¸°ÙÆÃ ÇÏÀÌ¶óÀÌÆ® Å¸ÀÏ[{i}]: {_targetingHighlightTiles[i]?.name ?? "null"}");
-                }
-            }
-            _lastHoveredTile = currentHoveredTile;
-        }
-    }
-    public void OnProceedButtonClicked()
-    {
-       
-        {
-            // ¡å¡å¡å ÀÌ ºÎºĞÀÌ ¼öÁ¤µÇ¾ú½À´Ï´Ù ¡å¡å¡å
-            // Á÷Á¢ ÄÚ·çÆ¾À» ½ÃÀÛÇÏ´Â ´ë½Å, '¾×¼Ç ÆäÀÌÁî ½ÃÀÛ' ÀÌº¥Æ®¸¦ ¹æ¼ÛÇÕ´Ï´Ù.
-            if (BattleEventManager.instance != null)
-            {
-                BattleEventManager.instance.RaiseActionPhaseStart();
-            }
-            // ¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã
-
-            // ½ÇÁ¦ ¾×¼Ç ½ÇÇàÀº ÀÌ ÀÌº¥Æ®¸¦ ±¸µ¶ÇÑ ´Ù¸¥ ÇÔ¼ö°¡ ´ã´çÇÏ°Ô µË´Ï´Ù.
-            // StartCoroutine(ActionPhaseCoroutine()); // ÀÌ ÁÙÀº ÀÌÁ¦ ÇÊ¿ä ¾ø½À´Ï´Ù.
-        }
-    }
-    private void HandleTileClick()
-    {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-
-        if (Physics.Raycast(ray, out hit, Mathf.Infinity, tileLayerMask))
-        {
-            Tile3D clickedTile = hit.collider.GetComponent<Tile3D>();
-
-            if (clickedTile != null && _targetingHighlightTiles.Contains(clickedTile))
-            {
-                Debug.Log($"<color=yellow>À¯È¿ÇÑ Å¸ÀÏ({clickedTile.name}) Å¬¸¯! ¾×¼ÇÀ» ½ÇÇàÇÕ´Ï´Ù.</color>");
-                // TODO: TurnManager¿¡°Ô ¾×¼Ç Àü´Ş ¹× »ç¿ëÇÑ Ä«µå Á¦°Å ·ÎÁ÷
-                UpdateTargetingMode();
-            }
-        }
-    }
 
     private void OnEnable()
     {
         if (BattleEventManager.instance != null)
         {
-            BattleEventManager.instance.OnBattleStart += OnBattleStarted;
+            BattleEventManager.instance.OnAllUnitsPlaced += OnAllUnitsPlacedHandler;
         }
     }
 
@@ -170,319 +55,406 @@ public class CardManager : MonoBehaviour
     {
         if (BattleEventManager.instance != null)
         {
-            BattleEventManager.instance.OnBattleStart -= OnBattleStarted;
+            BattleEventManager.instance.OnAllUnitsPlaced -= OnAllUnitsPlacedHandler;
         }
     }
 
-    public void Initialize(List<CardDataSO> playerDeck, int handSize, int mulligansPerTurn, int maxActions)
+    private void OnAllUnitsPlacedHandler()
     {
-        this.handSize = handSize;
-        this.mulligansLeft = mulligansPerTurn;
-        this.playerMaxActionsPerTurn = maxActions;
-        if (playerDeck == null || playerDeck.Count == 0) return;
-        drawPile = new List<CardDataSO>(playerDeck);
-        drawPile = drawPile.OrderBy(a => System.Guid.NewGuid()).ToList();
-        isInitialized = true;
-        if (proceedButton != null) proceedButton.gameObject.SetActive(false);
+        if (BattleInitializer.instance != null)
+        {
+            Initialize(
+              BattleInitializer.instance.playerDeck,
+              BattleInitializer.instance.handSize,
+              BattleInitializer.instance.mulligansPerTurn,
+              BattleInitializer.instance.playerMaxActionsPerTurn
+            );
+        }
     }
 
-    private void OnBattleStarted()
+    void Update()
     {
-        if (!isInitialized)
+        if (_targetingCard != null && !_isPreviewSuppressedByHover)
         {
-            StartCoroutine(WaitForInitializationAndDraw());
+            UpdateTargetingAura(_targetingCard);
+        }
+        else if (!_isPreviewSuppressedByHover)
+        {
+            if (_highlightManager != null)
+            {
+                _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerPreview);
+            }
+        }
+
+        if (GameManager.Instance != null && GameManager.Instance.currentPhase == GameManager.BattlePhase.ActionPhase)
+        {
+            HandleMouseClick();
+        }
+    }
+
+    public void Initialize(List<CardDataSO> deck, int handSize, int mulligans, int maxActions)
+    {
+        _handSize = handSize;
+        _mulligansPerTurn = mulligans;
+        _maxActionsPerTurn = maxActions;
+        _highlightManager = HighlightManager.instance;
+        _playerDeck = new List<CardDataSO>(deck.Where(card => card != null).ToList());
+        _discardPile = new List<CardDataSO>();
+        _currentHand = new List<CardDataSO>();
+        _selectedCards.Clear();
+        ClearTargetingCard();
+        ShuffleDeck();
+
+        // [ì‹ ê·œ] ëª¨ë“  ì´ˆê¸°í™”ê°€ ëë‚¬ìŒì„ ì´ë²¤íŠ¸ ë§¤ë‹ˆì €ì— ì•Œë¦½ë‹ˆë‹¤.
+        if (BattleEventManager.instance != null)
+        {
+            BattleEventManager.instance.RaiseCardManagerReady();
+        }
+    }
+
+    #region ë“œë¡œìš° ë° ë©€ë¦¬ê±´
+
+    public void DrawHand()
+    {
+        // UI ì •ë¦¬
+        foreach (Transform child in handPanelTransform) { Destroy(child.gameObject); }
+        foreach (Transform child in actionPanelTransform) { Destroy(child.gameObject); }
+
+        // í˜„ì¬ í•¸ë“œì™€ ì„ íƒëœ ì¹´ë“œë“¤ì„ ë²„ë¦° ì¹´ë“œ ë”ë¯¸ë¡œ ì´ë™
+        _discardPile.AddRange(_currentHand);
+        _discardPile.AddRange(_selectedCards.Values);
+        _currentHand.Clear();
+        _selectedCards.Clear();
+
+        ClearTargetingCard();
+        CheckAndUpdateProceedButton();
+        _remainingMulligans = _mulligansPerTurn;
+
+        // ìƒˆë¡œìš´ í•¸ë“œ ë½‘ê¸°
+        DrawCards(_handSize);
+
+        if (BattleUIManager.instance != null) { BattleUIManager.instance.ShowHandPanel(); }
+    }
+
+    public void PerformMulligan()
+    {
+        if (GameManager.Instance.currentPhase != GameManager.BattlePhase.PlayerTurn_CardSelection)
+        {
+            Debug.LogWarning("[Mulligan] ì¹´ë“œ ì„ íƒ ë‹¨ê³„ì—ì„œë§Œ ë©€ë¦¬ê±´ì„ í•  ìˆ˜ ìˆìŠµë‹ˆë‹¤.");
             return;
         }
-        DrawNewHand();
+        if (_remainingMulligans <= 0)
+        {
+            Debug.LogWarning("[Mulligan] ë‚¨ì€ ë©€ë¦¬ê±´ íšŸìˆ˜ê°€ ì—†ìŠµë‹ˆë‹¤.");
+            return;
+        }
+
+        _remainingMulligans--;
+        Debug.Log($"<color=orange>[Mulligan] ë©€ë¦¬ê±´ì„ ì‹¤í–‰í•©ë‹ˆë‹¤. ë‚¨ì€ íšŸìˆ˜: {_remainingMulligans}</color>");
+
+        // [ìˆ˜ì •] í•¸ë“œì— ì¹´ë“œê°€ 0ì¥ì´ì–´ë„ ìƒê´€ì—†ì´ ì§„í–‰í•©ë‹ˆë‹¤.
+        // í•¸ë“œì— ë‚¨ì•„ìˆëŠ” ì¹´ë“œë¥¼ ëª¨ë‘ ë²„ë¦½ë‹ˆë‹¤.
+        _discardPile.AddRange(_currentHand);
+        Debug.Log($"[Mulligan] í•¸ë“œì— ìˆë˜ {_currentHand.Count}ì¥ì˜ ì¹´ë“œë¥¼ ë²„ë ¸ìŠµë‹ˆë‹¤.");
+        _currentHand.Clear();
+
+        // í•¸ë“œ íŒ¨ë„ì˜ UIë¥¼ ëª¨ë‘ ì œê±°í•©ë‹ˆë‹¤.
+        foreach (Transform cardUI in handPanelTransform)
+        {
+            Destroy(cardUI.gameObject);
+        }
+
+        // ë¬´ì¡°ê±´ í•¸ë“œ ì‚¬ì´ì¦ˆë§Œí¼ ìƒˆë¡œ ë“œë¡œìš°í•©ë‹ˆë‹¤.
+        DrawCards(_handSize);
     }
 
-    private IEnumerator WaitForInitializationAndDraw()
+    private void DrawCards(int amount)
     {
-        float waitTime = 0f;
-        while (!isInitialized && waitTime < 5f)
-        {
-            yield return new WaitForSeconds(0.1f);
-            waitTime += 0.1f;
-        }
-        if (isInitialized)
-        {
-            DrawNewHand();
-        }
-    }
+        Debug.Log($"[Draw] {amount}ì¥ì˜ ì¹´ë“œë¥¼ ìƒˆë¡œ ë½‘ìŠµë‹ˆë‹¤.");
+        int actualDrawnCount = 0;
 
-    public void DrawNewHand()
-    {
-        for (int i = 0; i < handSize; i++)
+        for (int i = 0; i < amount; i++)
         {
-            DrawCard();
-        }
-    }
-
-    private void DrawCard()
-    {
-        if (drawPile.Count == 0)
-        {
-            if (discardPile.Count > 0)
+            // ë±ì´ ë¹„ì–´ìˆìœ¼ë©´ ë²„ë¦° ì¹´ë“œ ë”ë¯¸ë¥¼ ì„ì–´ì„œ ë±ìœ¼ë¡œ ë§Œë“¤ê¸°
+            if (_playerDeck.Count == 0)
             {
-                drawPile.AddRange(discardPile);
-                discardPile.Clear();
-                drawPile = drawPile.OrderBy(a => System.Guid.NewGuid()).ToList();
+                ReshuffleDiscardPile();
             }
-            else return;
+
+            // ê·¸ë˜ë„ ë±ì´ ë¹„ì–´ìˆë‹¤ë©´ (ëª¨ë“  ì¹´ë“œë¥¼ ë‹¤ ë½‘ì€ ìƒí™©) ì¤‘ë‹¨
+            if (_playerDeck.Count == 0)
+            {
+                Debug.LogWarning($"[Draw] ë±ê³¼ ë²„ë¦° ë”ë¯¸ì— ë” ì´ìƒ ë½‘ì„ ì¹´ë“œê°€ ì—†ìŠµë‹ˆë‹¤. {actualDrawnCount}/{amount}ì¥ë§Œ ë½‘ì•˜ìŠµë‹ˆë‹¤.");
+                break;
+            }
+
+            CardDataSO drawnCard = _playerDeck[0];
+            _playerDeck.RemoveAt(0);
+            _currentHand.Add(drawnCard);
+            InstantiateCardUI(drawnCard);
+            actualDrawnCount++;
         }
-        CardDataSO drawnCard = drawPile[0];
-        drawPile.RemoveAt(0);
-        hand.Add(drawnCard);
-        CreateCardUI(drawnCard);
+
+        Debug.Log($"[Draw] ì‹¤ì œë¡œ {actualDrawnCount}ì¥ì˜ ì¹´ë“œë¥¼ ë½‘ì•˜ìŠµë‹ˆë‹¤. í˜„ì¬ í•¸ë“œ: {_currentHand.Count}ì¥");
     }
 
-    private void CreateCardUI(CardDataSO cardData)
-    {
-        if (cardUiPrefab == null || handTransform == null) return;
-        GameObject newCardUI = Instantiate(cardUiPrefab, handTransform);
-        newCardUI.GetComponent<CardUI>().Setup(cardData, this);
-        handUiObjects.Add(newCardUI);
-    }
+    #endregion
 
-    public void OnCardClicked(GameObject cardUIObject, CardDataSO cardData)
+    #region ê¸°ì¡´ ì¹´ë“œ ê´€ë¦¬ í•¨ìˆ˜
+
+    private void UpdateTargetingAura(CardDataSO cardData)
     {
-        if (cardUIObject.transform.parent == handTransform)
+        if (_highlightManager == null || playerController == null || cardData == null) return;
+        _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerPreview);
+        if (cardData.intentPredictionRange.Count > 0)
         {
-            SelectCardFromHand(cardUIObject, cardData);
+            List<GameObject> targetableTiles = new List<GameObject>();
+            Vector3Int playerPos = playerController.GetGridPosition();
+            foreach (var vector in cardData.intentPredictionRange)
+            {
+                GameObject tile = GridManager3D.instance.GetTileAtPosition(playerPos + vector);
+                if (tile != null) targetableTiles.Add(tile);
+            }
+            _currentPreviewTiles = targetableTiles.Select(t => t.GetComponent<Tile3D>()).Where(t => t != null).ToList();
+            _highlightManager.AddHighlight(_currentPreviewTiles, HighlightManager.HighlightType.PlayerPreview);
         }
-        else if (cardUIObject.transform.parent == actionPanelTransform)
+    }
+
+    private void HandleMouseClick()
+    {
+        if (_targetingCard == null) return;
+        if (Input.GetMouseButtonDown(0))
         {
-            ReturnCardToHand(cardUIObject, cardData);
+            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit, 200f))
+            {
+                Tile3D clickedTile = hit.collider.GetComponent<Tile3D>();
+                if (clickedTile != null)
+                {
+                    StartCoroutine(CommitTargetCoroutine(clickedTile.gameObject));
+                }
+            }
         }
     }
 
-    private void SelectCardFromHand(GameObject cardUIObject, CardDataSO cardData)
+    public void OnCardClicked(GameObject cardObject, CardDataSO cardData)
     {
-        if (actionCards.Count >= playerMaxActionsPerTurn) return;
-        hand.Remove(cardData);
-        actionCards.Add(cardData);
-        handUiObjects.Remove(cardUIObject);
-        actionCardUiObjects.Add(cardUIObject);
-        StartCoroutine(AnimateCardMovement(cardUIObject, actionPanelTransform));
-        UpdateTargetingMode();
+        if (GameManager.Instance.currentPhase == GameManager.BattlePhase.PlayerTurn_CardSelection)
+        {
+            if (cardObject.transform.parent == handPanelTransform)
+            {
+                if (actionPanelTransform.childCount >= _maxActionsPerTurn) return;
+                MoveCardToActionPanel(cardObject, cardData);
+            }
+            else if (cardObject.transform.parent == actionPanelTransform)
+            {
+                MoveCardToHandPanel(cardObject, cardData);
+            }
+        }
+        else if (GameManager.Instance.currentPhase == GameManager.BattlePhase.ActionPhase)
+        {
+            if (cardObject.transform.parent == actionPanelTransform && cardObject != _targetingCardUIObject)
+            {
+                Debug.Log($"[CardManager] í–‰ë™ ìˆœì„œ ë³€ê²½: '{cardData.cardName}' ì¹´ë“œë¥¼ ìš°ì„  íƒ€ê²ŸíŒ…í•©ë‹ˆë‹¤.");
+                cardObject.transform.SetAsFirstSibling();
+                UpdateTargetingCard();
+            }
+        }
     }
 
-    private void ReturnCardToHand(GameObject cardUIObject, CardDataSO cardData)
+    private void UpdateTargetingCard()
     {
-        actionCards.Remove(cardData);
-        hand.Add(cardData);
-        actionCardUiObjects.Remove(cardUIObject);
-        handUiObjects.Add(cardUIObject);
-        StartCoroutine(AnimateCardMovement(cardUIObject, handTransform));
-        UpdateTargetingMode();
+        ClearTargetingCard();
+        if (actionPanelTransform.childCount > 0)
+        {
+            Transform firstCardTransform = actionPanelTransform.GetChild(0);
+            if (firstCardTransform != null)
+            {
+                CardUI firstCardUI = firstCardTransform.GetComponent<CardUI>();
+                if (firstCardUI != null)
+                {
+                    _targetingCard = firstCardUI.GetCardData();
+                    _targetingCardUIObject = firstCardUI.gameObject;
+                    Debug.Log($"[CardManager] '{_targetingCard.cardName}' ì¹´ë“œê°€ ìë™ìœ¼ë¡œ íƒ€ê²ŸíŒ… ì¹´ë“œë¡œ ì„¤ì •ë¨.");
+                }
+            }
+        }
     }
 
-    private IEnumerator AnimateCardMovement(GameObject cardUIObject, Transform targetParent)
+    private void ClearTargetingCard()
     {
-        cardUIObject.transform.SetParent(targetParent, true);
-        yield return null;
+        if (_targetingCard != null)
+        {
+            if (_highlightManager != null)
+                _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerPreview);
+            _targetingCard = null;
+            _targetingCardUIObject = null;
+        }
     }
-
-    public void CheckProceedButtonState()
-    {
-        if (proceedButton == null) return;
-        bool shouldBeActive = (actionCards.Count >= playerMaxActionsPerTurn);
-        proceedButton.gameObject.SetActive(shouldBeActive);
-    }
-
-    // --- ÇÏÀÌ¶óÀÌÆ® ·ÎÁ÷ ---
 
     public void HandleCardHoverEnter(CardDataSO cardData)
     {
-        if (HighlightManager.instance == null || playerController == null) return;
-
-        Debug.Log($"<color=magenta>[Card Hover] Ä«µå È£¹ö ½ÃÀÛ: {cardData.name}</color>");
-
-        ClearTargetingHighlight();
-
-        List<GameObject> tiles = GetTargetableTiles(cardData, playerController);
-        Debug.Log($"<color=magenta>[Card Hover] Å¸°Ù °¡´ÉÇÑ Å¸ÀÏ ¼ö: {tiles.Count}</color>");
-
-        _hoverHighlightTiles = tiles.Select(t => t.GetComponent<Tile3D>()).ToList();
-        HighlightManager.instance.AddHighlight(_hoverHighlightTiles, HighlightManager.HighlightType.PlayerPreview);
+        if (cardData == null) return;
+        _isPreviewSuppressedByHover = true;
+        UpdateTargetingAura(cardData);
     }
 
     public void HandleCardHoverExit()
     {
-        if (HighlightManager.instance == null) return;
-
-        Debug.Log($"<color=magenta>[Card Hover] Ä«µå È£¹ö Á¾·á</color>");
-
-        ClearHoverHighlight();
-
-        ShowTargetingHighlight();
+        _isPreviewSuppressedByHover = false;
     }
 
-    private void UpdateTargetingMode()
+    private IEnumerator CommitTargetCoroutine(GameObject targetTile)
     {
-        Debug.Log($"<color=blue>[Targeting] Å¸°ÙÆÃ ¸ğµå ¾÷µ¥ÀÌÆ®. ¾×¼Ç Ä«µå ¼ö: {actionCards.Count}</color>");
+        if (_targetingCard == null || _targetingCardUIObject == null) yield break;
+        Tile3D clickedTile3D = targetTile.GetComponent<Tile3D>();
+        if (clickedTile3D == null || !_currentPreviewTiles.Contains(clickedTile3D)) yield break;
 
-        ClearTargetingHighlight();
+        // [ì¶”ê°€] ClearTargetingCard()ê°€ í˜¸ì¶œë˜ê¸° ì „ì— ì¹´ë“œ ë°ì´í„°ë¥¼ ë¯¸ë¦¬ ì €ì¥í•©ë‹ˆë‹¤.
+        CardDataSO cardToUse = _targetingCard;
 
-        if (actionCards.Any())
+        QueuedAction newAction = new QueuedAction
         {
-            selectedCardForTargeting = actionCards[0];
-            Debug.Log($"<color=blue>[Targeting] Å¸°ÙÆÃ¿ë Ä«µå ¼³Á¤: {selectedCardForTargeting.name}</color>");
-            ShowTargetingHighlight();
+            User = playerController,
+            SourceCard = cardToUse, // ì €ì¥í•´ë‘” ë°ì´í„°ë¥¼ ì‚¬ìš©í•©ë‹ˆë‹¤.
+            TargetTile = targetTile
+        };
+
+        if (ActionTurnManager.Instance.IsProcessingQueue)
+        {
+            if (playerController.HasBreaksLeft())
+            {
+                playerController.UseBreak();
+                ActionTurnManager.Instance.AddActionToInterruptQueue(newAction);
+
+                // [ì¶”ê°€] ì‚¬ìš©í•œ ì¹´ë“œë¥¼ ë²„ë¦° ì¹´ë“œ ë”ë¯¸ì— ì¶”ê°€í•©ë‹ˆë‹¤.
+                _discardPile.Add(cardToUse);
+
+                GameObject cardToDestroy = _targetingCardUIObject;
+                _selectedCards.Remove(cardToDestroy);
+                ClearTargetingCard();
+                Destroy(cardToDestroy);
+                yield return null;
+                UpdateTargetingCard();
+            }
+            else
+            {
+                Debug.LogWarning("[BREAK] í ì²˜ë¦¬ ì¤‘ì´ì§€ë§Œ ë‚¨ì€ ë¸Œë ˆì´í¬ íšŸìˆ˜ê°€ ì—†ìŠµë‹ˆë‹¤!");
+                yield break;
+            }
         }
         else
         {
-            selectedCardForTargeting = null;
-            Debug.Log($"<color=blue>[Targeting] Å¸°ÙÆÃ¿ë Ä«µå ¾øÀ½</color>");
-        }
-        CheckProceedButtonState();
-    }
+            ActionTurnManager.Instance.AddActionToNormalQueue(newAction);
 
-    private void ShowTargetingHighlight()
-    {
-        if (selectedCardForTargeting != null)
-        {
-            Debug.Log($"<color=blue>[Targeting] Å¸°ÙÆÃ ÇÏÀÌ¶óÀÌÆ® Ç¥½Ã: {selectedCardForTargeting.name}</color>");
+            // [ì¶”ê°€] ì‚¬ìš©í•œ ì¹´ë“œë¥¼ ë²„ë¦° ì¹´ë“œ ë”ë¯¸ì— ì¶”ê°€í•©ë‹ˆë‹¤.
+            _discardPile.Add(cardToUse);
 
-            List<GameObject> tiles = GetTargetableTiles(selectedCardForTargeting, playerController);
-            Debug.Log($"<color=blue>[Targeting] Å¸°Ù °¡´ÉÇÑ Å¸ÀÏ ¼ö: {tiles.Count}</color>");
-
-            _targetingHighlightTiles = tiles.Select(t => t.GetComponent<Tile3D>()).Where(t => t != null).ToList();
-            Debug.Log($"<color=blue>[Targeting] Tile3D ÄÄÆ÷³ÍÆ®°¡ ÀÖ´Â Å¸ÀÏ ¼ö: {_targetingHighlightTiles.Count}</color>");
-
-            if (_targetingHighlightTiles.Count > 0)
+            GameObject cardToDestroy = _targetingCardUIObject;
+            _selectedCards.Remove(cardToDestroy);
+            ClearTargetingCard();
+            Destroy(cardToDestroy);
+            yield return null;
+            UpdateTargetingCard();
+            if (GameManager.Instance != null)
             {
-                HighlightManager.instance.AddHighlight(_targetingHighlightTiles, HighlightManager.HighlightType.PlayerPreview);
-
-                // µğ¹ö±×: Å¸°ÙÆÃ ÇÏÀÌ¶óÀÌÆ® Å¸ÀÏµéÀÇ ÀÌ¸§ Ãâ·Â
-                for (int i = 0; i < _targetingHighlightTiles.Count; i++)
-                {
-                    Debug.Log($"  - Å¸°ÙÆÃ Å¸ÀÏ[{i}]: {_targetingHighlightTiles[i].name}");
-                }
+                GameManager.Instance.NotifyPlayerActionSubmitted();
             }
         }
     }
 
-    private void ClearTargetingHighlight()
+    public int GetActionCardCount()
     {
-        if (_targetingHighlightTiles.Count > 0)
+        return actionPanelTransform.childCount;
+    }
+
+    private void CheckAndUpdateProceedButton()
+    {
+        bool shouldShow = actionPanelTransform.childCount >= _maxActionsPerTurn;
+        if (BattleUIManager.instance != null)
         {
-            Debug.Log($"<color=blue>[Targeting] Å¸°ÙÆÃ ÇÏÀÌ¶óÀÌÆ® Á¦°Å: {_targetingHighlightTiles.Count}°³ Å¸ÀÏ</color>");
-            HighlightManager.instance.RemoveHighlight(_targetingHighlightTiles, HighlightManager.HighlightType.PlayerPreview);
-            _targetingHighlightTiles.Clear();
+            if (shouldShow) BattleUIManager.instance.ShowProceedButton();
+            else BattleUIManager.instance.HideProceedButton();
         }
     }
 
-    private void ClearHoverHighlight()
+    private void MoveCardToActionPanel(GameObject cardObject, CardDataSO cardData)
     {
-        if (_hoverHighlightTiles.Count > 0)
+        cardObject.transform.SetParent(actionPanelTransform, false);
+        _currentHand.Remove(cardData);
+        _selectedCards.Add(cardObject, cardData);
+        CheckAndUpdateProceedButton();
+        UpdateTargetingCard();
+    }
+
+    private void MoveCardToHandPanel(GameObject cardObject, CardDataSO cardData)
+    {
+        cardObject.transform.SetParent(handPanelTransform, false);
+        _currentHand.Add(cardData);
+        _selectedCards.Remove(cardObject);
+        CheckAndUpdateProceedButton();
+        UpdateTargetingCard();
+    }
+
+    private void ShuffleDeck()
+    {
+        for (int i = 0; i < _playerDeck.Count; i++)
         {
-            Debug.Log($"<color=magenta>[Card Hover] È£¹ö ÇÏÀÌ¶óÀÌÆ® Á¦°Å: {_hoverHighlightTiles.Count}°³ Å¸ÀÏ</color>");
-            HighlightManager.instance.RemoveHighlight(_hoverHighlightTiles, HighlightManager.HighlightType.PlayerPreview);
-            _hoverHighlightTiles.Clear();
+            CardDataSO temp = _playerDeck[i];
+            int randomIndex = Random.Range(i, _playerDeck.Count);
+            _playerDeck[i] = _playerDeck[randomIndex];
+            _playerDeck[randomIndex] = temp;
+        }
+        Debug.Log($"[Shuffle] ë±ì„ ì„ì—ˆìŠµë‹ˆë‹¤. í˜„ì¬ ë±: {_playerDeck.Count}ì¥");
+    }
+
+    private void ReshuffleDiscardPile()
+    {
+        if (_discardPile.Count > 0)
+        {
+            Debug.Log($"[CardManager] ë±ì´ ë¹„ì–´ìˆì–´ ë²„ë¦° ì¹´ë“œ ë”ë¯¸ {_discardPile.Count}ì¥ì„ ë±ìœ¼ë¡œ ì„ìŠµë‹ˆë‹¤.");
+            _playerDeck.AddRange(_discardPile);
+            _discardPile.Clear();
+            ShuffleDeck();
+        }
+        else
+        {
+            Debug.Log("[CardManager] ë²„ë¦° ì¹´ë“œ ë”ë¯¸ë„ ë¹„ì–´ìˆìŠµë‹ˆë‹¤.");
         }
     }
 
-    private void ShowAoePreviewHighlight(Tile3D targetTile)
+    private void InstantiateCardUI(CardDataSO data)
     {
-        if (selectedCardForTargeting == null)
+        if (cardUIPrefab != null && handPanelTransform != null)
         {
-            Debug.LogWarning("[AOE Preview] selectedCardForTargetingÀÌ nullÀÔ´Ï´Ù!");
-            return;
-        }
-
-        if (selectedCardForTargeting.actionSequence == null || selectedCardForTargeting.actionSequence.Count == 0)
-        {
-            Debug.LogWarning($"[AOE Preview] {selectedCardForTargeting.name}ÀÇ actionSequence°¡ nullÀÌ°Å³ª ºñ¾îÀÖ½À´Ï´Ù!");
-            return;
-        }
-
-        GameAction mainAction = selectedCardForTargeting.actionSequence[0];
-        Debug.Log($"<color=green>[AOE Preview] AOE ¹Ì¸®º¸±â Ç¥½Ã Áß. Å¸°Ù Å¸ÀÏ: {targetTile.name}, ¾×¼Ç: {mainAction.GetType().Name}</color>");
-
-        List<GameObject> aoeTiles = mainAction.GetActionImpactTiles(playerController, targetTile.gameObject);
-        Debug.Log($"<color=green>[AOE Preview] AOE ¿µÇâ Å¸ÀÏ ¼ö: {aoeTiles.Count}</color>");
-
-        _aoePreviewTiles = aoeTiles.Select(t => t.GetComponent<Tile3D>()).Where(t => t != null).ToList();
-        Debug.Log($"<color=green>[AOE Preview] Tile3D ÄÄÆ÷³ÍÆ®°¡ ÀÖ´Â AOE Å¸ÀÏ ¼ö: {_aoePreviewTiles.Count}</color>");
-
-        if (_aoePreviewTiles.Count > 0)
-        {
-            // µğ¹ö±×: AOE Å¸ÀÏ°ú Å¸°ÙÆÃ Å¸ÀÏÀÌ °ãÄ¡´ÂÁö È®ÀÎ
-            foreach (var aoe in _aoePreviewTiles)
+            GameObject newCardUI = Instantiate(cardUIPrefab, handPanelTransform);
+            CardUI cardComponent = newCardUI.GetComponent<CardUI>();
+            if (cardComponent != null)
             {
-                bool isAlsoTargeting = _targetingHighlightTiles.Contains(aoe);
-                Debug.Log($"<color=cyan>[AOE Preview] {aoe.name} - Å¸°ÙÆÃ Å¸ÀÏÀÌ±âµµ ÇÔ: {isAlsoTargeting}</color>");
-            }
-
-            // HighlightManager »óÅÂ Ã¼Å©
-            if (HighlightManager.instance == null)
-            {
-                Debug.LogError("[AOE Preview] HighlightManager.instance°¡ nullÀÔ´Ï´Ù!");
-                return;
-            }
-
-            Debug.Log($"<color=green>[AOE Preview] HighlightManager¿¡ ÇÏÀÌ¶óÀÌÆ® Ãß°¡ ¿äÃ»Áß... Å¸ÀÔ: PlayerTarget</color>");
-
-            HighlightManager.instance.AddHighlight(_aoePreviewTiles, HighlightManager.HighlightType.PlayerTarget);
-
-            Debug.Log($"<color=green>[AOE Preview] HighlightManager.AddHighlight È£Ãâ ¿Ï·á</color>");
-
-            // µğ¹ö±×: Á÷Á¢ »ö»ó º¯°æÇØ¼­ Å×½ºÆ®
-            Debug.Log($"<color=red>[TEST] Á÷Á¢ »ö»ó º¯°æ Å×½ºÆ® ½ÃÀÛ</color>");
-            foreach (var tile in _aoePreviewTiles)
-            {
-                if (tile.MyMaterial != null)
-                {
-                    tile.MyMaterial.color = Color.red; // »¡°£»öÀ¸·Î °­Á¦ º¯°æ
-                    Debug.Log($"<color=red>[TEST] {tile.name}À» »¡°£»öÀ¸·Î °­Á¦ º¯°æ</color>");
-                }
+                cardComponent.Setup(data, this);
             }
         }
     }
 
-    private void ClearAoePreviewHighlight()
+    public void OnActionPhaseStart()
     {
-        if (_aoePreviewTiles.Count > 0)
-        {
-            Debug.Log($"<color=green>[AOE Preview] AOE ¹Ì¸®º¸±â Á¦°Å: {_aoePreviewTiles.Count}°³ Å¸ÀÏ</color>");
-
-            if (HighlightManager.instance == null)
-            {
-                Debug.LogError("[AOE Preview] HighlightManager.instance°¡ nullÀÔ´Ï´Ù!");
-                return;
-            }
-
-            Debug.Log($"<color=green>[AOE Preview] HighlightManager¿¡ ÇÏÀÌ¶óÀÌÆ® Á¦°Å ¿äÃ»Áß...</color>");
-            HighlightManager.instance.RemoveHighlight(_aoePreviewTiles, HighlightManager.HighlightType.PlayerTarget);
-
-            // AOE Á¦°Å ÈÄ ¿ø·¡ PlayerPreview ÇÏÀÌ¶óÀÌÆ® º¹¿ø
-            HighlightManager.instance.AddHighlight(_aoePreviewTiles, HighlightManager.HighlightType.PlayerPreview);
-
-            Debug.Log($"<color=green>[AOE Preview] HighlightManager.RemoveHighlight È£Ãâ ¿Ï·á</color>");
-
-            _aoePreviewTiles.Clear();
-        }
+        UpdateTargetingCard();
     }
 
-    private List<GameObject> GetTargetableTiles(CardDataSO cardData, UnitController user)
+    #endregion
+
+    #region ë””ë²„ê·¸ ë° ìƒíƒœ í™•ì¸ìš© í•¨ìˆ˜
+
+    public void LogCurrentState()
     {
-        if (cardData.actionSequence == null || cardData.actionSequence.Count == 0)
-        {
-            Debug.LogWarning($"[GetTargetableTiles] {cardData.name}ÀÇ actionSequence°¡ nullÀÌ°Å³ª ºñ¾îÀÖ½À´Ï´Ù!");
-            return new List<GameObject>();
-        }
-
-        GameAction mainAction = cardData.actionSequence[0];
-        List<GameObject> targetableTiles = mainAction.GetTargetableTiles(user);
-        Debug.Log($"[GetTargetableTiles] {cardData.name}ÀÇ Å¸°Ù °¡´ÉÇÑ Å¸ÀÏ ¼ö: {targetableTiles.Count}");
-
-        return targetableTiles;
+        Debug.Log($"[CardManager State] ë±: {_playerDeck.Count}ì¥, í•¸ë“œ: {_currentHand.Count}ì¥, ë²„ë¦° ë”ë¯¸: {_discardPile.Count}ì¥, ì•¡ì…˜: {_selectedCards.Count}ì¥");
     }
 
-    // HighlightManager¿¡¼­ È£ÃâÇÒ ¸Ş¼­µå
-    public bool IsTargeting()
+    public int GetTotalCardsCount()
     {
-        return selectedCardForTargeting != null;
+        return _playerDeck.Count + _currentHand.Count + _discardPile.Count + _selectedCards.Count;
     }
+
+    #endregion
 }

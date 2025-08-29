@@ -51,7 +51,15 @@ public abstract class GameAction
 
     public IEnumerator Execute()
     {
-        // 스턴 체크 등 필요 시 추가
+        // [신규] 액션 실행 전, 사용자의 스턴 상태를 확인합니다.
+        if (!actionUser.ProcessStunStatus())
+        {
+            // ProcessStunStatus가 false를 반환하면 (행동 불가),
+            // 카운터만 감소시키고 액션을 즉시 종료합니다.
+            yield break;
+        }
+
+        // 스턴 상태가 아닐 경우에만 원래의 행동을 실행합니다.
         yield return InternalExecute();
     }
 

@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using System;
 using System.Collections;
 
@@ -11,6 +11,10 @@ public class BattleEventManager : MonoBehaviour
     public event Action OnAllUnitsPlaced;
     public event Action OnBattleStart;
     public event Action OnActionPhaseStart;
+
+    // [ì‹ ê·œ] ì¹´ë“œ ë§¤ë‹ˆì €ê°€ ì´ˆê¸°í™”ë¥¼ ë§ˆì³¤ì„ ë•Œ ë°œìƒí•  ì´ë²¤íŠ¸ì…ë‹ˆë‹¤.
+    public event Action OnCardManagerReady;
+
     void Awake()
     {
         if (instance == null) { instance = this; }
@@ -19,84 +23,58 @@ public class BattleEventManager : MonoBehaviour
 
     private void OnEnable()
     {
-        // 'À¯´Ö ¹èÄ¡ ¿Ï·á' ½ÅÈ£¸¦ ¹ŞÀ¸¸é, 'ÀüÅõ ½ÃÀÛ' ½ÅÈ£¸¦ º¸³À´Ï´Ù.
-        OnAllUnitsPlaced += HandleAllUnitsPlaced;
+        // ì´ í•¸ë“¤ëŸ¬ëŠ” ë” ì´ìƒ í° ì˜ë¯¸ê°€ ì—†ìœ¼ë¯€ë¡œ ìœ ì§€í•˜ê±°ë‚˜ ì‚­ì œí•´ë„ ì¢‹ìŠµë‹ˆë‹¤.
+ Â  Â  Â  Â // OnAllUnitsPlaced += HandleAllUnitsPlaced;
     }
 
     private void OnDisable()
     {
-        OnAllUnitsPlaced -= HandleAllUnitsPlaced;
+ Â  Â  Â  Â // OnAllUnitsPlaced -= HandleAllUnitsPlaced;
     }
 
+    // OnBattleStart ì´ë²¤íŠ¸ëŠ” í˜„ì¬ êµ¬ë…ìê°€ ì—†ìœ¼ë¯€ë¡œ, ì´ í•¨ìˆ˜ë„ ë‚˜ì¤‘ì— ì •ë¦¬í•  ìˆ˜ ìˆìŠµë‹ˆë‹¤.
     private void HandleAllUnitsPlaced()
     {
-        RaiseBattleStart();
+        // RaiseBattleStart();
     }
-
-    // --- ¿ÜºÎ¿¡¼­ È£ÃâÇÒ ¼ö ÀÖ´Â '¹æ¼Û ¹öÆ°' ÇÔ¼öµé ---
 
     public void RaiseSetupGrid()
     {
-        if (OnSetupGrid != null)
-        {
-            Debug.Log("<color=cyan>EVENT: OnSetupGrid ¹ß»ı! ±×¸®µå »ı¼ºÀ» ½ÃÀÛÇÕ´Ï´Ù.</color>");
-            OnSetupGrid.Invoke();
-        }
-        else
-        {
-            Debug.LogWarning("--- BattleEventManager: OnSetupGrid ÀÌº¥Æ®¸¦ ±¸µ¶ÇÑ ½ºÅ©¸³Æ®°¡ ¾ø½À´Ï´Ù! ---");
-        }
+        Debug.Log("<color=cyan>EVENT: OnSetupGrid ë°œìƒ! ê·¸ë¦¬ë“œ ìƒì„±ì„ ì‹œì‘í•©ë‹ˆë‹¤.</color>");
+        OnSetupGrid?.Invoke();
     }
 
     public void RaiseGridGenerationComplete()
     {
-        if (OnGridGenerationComplete != null)
-        {
-            Debug.Log("<color=cyan>EVENT: OnGridGenerationComplete ¹ß»ı! ±×¸®µå »ı¼ºÀÌ ¿Ï·áµÇ¾ú½À´Ï´Ù.</color>");
-            OnGridGenerationComplete.Invoke();
-        }
-        else
-        {
-            Debug.LogWarning("--- BattleEventManager: OnGridGenerationComplete ÀÌº¥Æ®¸¦ ±¸µ¶ÇÑ ½ºÅ©¸³Æ®°¡ ¾ø½À´Ï´Ù! ---");
-        }
+        Debug.Log("<color=cyan>EVENT: OnGridGenerationComplete ë°œìƒ! ê·¸ë¦¬ë“œ ìƒì„±ì´ ì™„ë£Œë˜ì—ˆìŠµë‹ˆë‹¤.</color>");
+        OnGridGenerationComplete?.Invoke();
     }
 
     public void RaiseAllUnitsPlaced()
     {
-        if (OnAllUnitsPlaced != null)
-        {
-            Debug.Log("<color=cyan>EVENT: OnAllUnitsPlaced ¹ß»ı! ¸ğµç À¯´Ö ¹èÄ¡°¡ ¿Ï·áµÇ¾ú½À´Ï´Ù.</color>");
-            OnAllUnitsPlaced.Invoke();
-        }
-        else
-        {
-            Debug.LogWarning("--- BattleEventManager: OnAllUnitsPlaced ÀÌº¥Æ®¸¦ ±¸µ¶ÇÑ ½ºÅ©¸³Æ®°¡ ¾ø½À´Ï´Ù! ---");
-        }
+        Debug.Log("<color=cyan>EVENT: OnAllUnitsPlaced ë°œìƒ! ëª¨ë“  ìœ ë‹› ë°°ì¹˜ê°€ ì™„ë£Œë˜ì—ˆìŠµë‹ˆë‹¤.</color>");
+        OnAllUnitsPlaced?.Invoke();
     }
 
     public void RaiseBattleStart()
     {
-        if (OnBattleStart != null)
-        {
-            Debug.Log("<color=red>EVENT: OnBattleStart ¹ß»ı! ÀüÅõ¸¦ ½ÃÀÛÇÕ´Ï´Ù!</color>");
-            OnBattleStart.Invoke();
-        }
-        else
-        {
-            Debug.LogWarning("--- BattleEventManager: OnBattleStart ÀÌº¥Æ®¸¦ ±¸µ¶ÇÑ ½ºÅ©¸³Æ®°¡ ¾ø½À´Ï´Ù! ---");
-        }
+        Debug.Log("<color=red>EVENT: OnBattleStart ë°œìƒ! ì „íˆ¬ë¥¼ ì‹œì‘í•©ë‹ˆë‹¤!</color>");
+        OnBattleStart?.Invoke();
     }
+
     public void RaiseActionPhaseStart()
     {
-        if (OnActionPhaseStart != null)
-        {
-            Debug.Log("<color=yellow>EVENT: OnActionPhaseStart ¹ß»ı! ¾×¼Ç ÆäÀÌÁî¸¦ ½ÃÀÛÇÕ´Ï´Ù.</color>");
-            OnActionPhaseStart.Invoke();
-        }
-        else
-        {
-            Debug.LogWarning("--- BattleEventManager: OnActionPhaseStart ÀÌº¥Æ®¸¦ ±¸µ¶ÇÑ ½ºÅ©¸³Æ®°¡ ¾ø½À´Ï´Ù! ---");
-        }
+        Debug.Log("<color=yellow>EVENT: OnActionPhaseStart ë°œìƒ! ì•¡ì…˜ í˜ì´ì¦ˆë¥¼ ì‹œì‘í•©ë‹ˆë‹¤.</color>");
+        OnActionPhaseStart?.Invoke();
     }
-    // ¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã¡ã
+
+    /// <summary>
+    /// [ì‹ ê·œ] CardManagerê°€ ì¤€ë¹„ ì™„ë£Œ ì‹ í˜¸ë¥¼ ë³´ë‚¼ ë•Œ í˜¸ì¶œí•  ì´ë²¤íŠ¸ ë°œì†¡ í•¨ìˆ˜ì…ë‹ˆë‹¤.
+    /// </summary>
+    public void RaiseCardManagerReady()
+    {
+        // [ìˆ˜ì •] ë¡œê·¸ ë©”ì‹œì§€ë¥¼ ì´ë²¤íŠ¸ì˜ ì—­í• ì— ë§ê²Œ ëª…í™•í•˜ê²Œ ë³€ê²½í–ˆìŠµë‹ˆë‹¤.
+        Debug.Log("<color=green>EVENT: OnCardManagerReady ë°œìƒ! GameManagerì˜ í„´ ì‹œì‘ì„ ì¤€ë¹„í•©ë‹ˆë‹¤.</color>");
+        OnCardManagerReady?.Invoke();
+    }
 }

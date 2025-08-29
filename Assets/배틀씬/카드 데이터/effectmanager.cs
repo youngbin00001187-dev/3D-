@@ -31,8 +31,8 @@ public class EffectManager : MonoBehaviour
         _effectPrototypes = new Dictionary<EffectType, GameEffect>();
         // KnockbackEffect, StunEffect 등 GameEffect를 상속받는 클래스가 프로젝트에 추가되면
         // 이 부분의 주석을 해제하여 등록해야 합니다.
-        // _effectPrototypes.Add(EffectType.Knockback, new KnockbackEffect());
-        // _effectPrototypes.Add(EffectType.Stun, new StunEffect());
+        _effectPrototypes.Add(EffectType.Knockback, new KnockbackEffect());
+        _effectPrototypes.Add(EffectType.Stun, new StunEffect());
     }
 
     /// <summary>
@@ -52,11 +52,20 @@ public class EffectManager : MonoBehaviour
     }
 
     /// <summary>
+    /// [신규] EffectType을 받아 등록된 효과의 원본 인스턴스를 반환합니다.
+    /// MoveAction 등이 효과에 데이터를 직접 주입할 때 사용합니다.
+    /// </summary>
+    public GameEffect GetEffect(EffectType effectType)
+    {
+        _effectPrototypes.TryGetValue(effectType, out GameEffect effect);
+        return effect;
+    }
+
+    /// <summary>
     /// 두 유닛이 동시에 움직이는 범용 연출 툴입니다. (3D 환경에 맞게 수정됨)
     /// </summary>
     public IEnumerator ExecuteSimultaneousMoveCoroutine(UnitController unitA, UnitController unitB, GameObject destTileA, GameObject destTileB, float moveSpeed)
     {
-        // ▼▼▼ GridManager3D를 참조하도록 수정합니다 ▼▼▼
         GridManager3D.instance.UnregisterUnitPosition(unitA, unitA.GetGridPosition());
         GridManager3D.instance.UnregisterUnitPosition(unitB, unitB.GetGridPosition());
 
@@ -70,7 +79,6 @@ public class EffectManager : MonoBehaviour
 
         yield return sequence.WaitForCompletion();
 
-        // ▼▼▼ 이동이 끝난 후, UnitController의 MoveToTile 함수를 호출하도록 단순화합니다 ▼▼▼
         unitA.MoveToTile(destTileA);
         unitB.MoveToTile(destTileB);
     }

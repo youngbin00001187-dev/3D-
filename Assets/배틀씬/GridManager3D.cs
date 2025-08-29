@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 
 public class GridManager3D : MonoBehaviour
 {
@@ -24,8 +25,9 @@ public class GridManager3D : MonoBehaviour
     public float tileAnimationDuration = 0.2f;
 
     private Dictionary<Vector3Int, GameObject> grid = new Dictionary<Vector3Int, GameObject>();
-    // ▼▼▼ 이전에 주석 처리했던 유닛 관리 기능을 다시 활성화했습니다. ▼▼▼
-    private Dictionary<Vector3Int, UnitController> unitsOnGrid = new Dictionary<Vector3Int, UnitController>();
+
+    // [수정] 한 타일에 여러 유닛이 있을 수 있도록 List로 변경
+    private Dictionary<Vector3Int, List<UnitController>> unitsOnGrid = new Dictionary<Vector3Int, List<UnitController>>();
 
     void Awake()
     {
@@ -60,7 +62,7 @@ public class GridManager3D : MonoBehaviour
 
         foreach (Transform child in transform) { Destroy(child.gameObject); }
         grid.Clear();
-        unitsOnGrid.Clear(); // 유닛 딕셔너리도 함께 초기화합니다.
+        unitsOnGrid.Clear();
 
         float currentZOffset = 0;
 
@@ -70,7 +72,6 @@ public class GridManager3D : MonoBehaviour
             float currentTileWidth = tilePrefab.transform.localScale.x * scale;
             float rowWidth = gridWidth * (currentTileWidth * horizontalSpacing);
             float startX = -rowWidth / 2f + (currentTileWidth * horizontalSpacing) / 2f;
-
             float currentTileDepth = tilePrefab.transform.localScale.z * scale;
             float currentSpacing = currentTileDepth * verticalSpacing;
 
@@ -83,7 +84,6 @@ public class GridManager3D : MonoBehaviour
                 float shearOffset = (currentZOffset + (currentSpacing / 2f)) * shearFactor;
                 float posX = startX + (x * (currentTileWidth * horizontalSpacing)) + shearOffset;
                 float posZ = currentZOffset;
-
                 newTile.transform.localPosition = new Vector3(posX, 0, posZ);
 
                 newTile.name = $"Tile_{x}_{z}";
@@ -93,18 +93,14 @@ public class GridManager3D : MonoBehaviour
                 if (tileComponent != null) { tileComponent.gridPosition = gridPos; }
 
                 grid[gridPos] = newTile;
-
                 StartCoroutine(AnimateTileAppearance(newTile, finalScale));
                 yield return new WaitForSeconds(tileRevealDelay);
             }
-
             currentZOffset += currentSpacing;
         }
 
-        // ▼▼▼ 모든 타일 생성이 시작된 후, 마지막 애니메이션이 끝날 때까지 잠시 기다립니다. ▼▼▼
         yield return new WaitForSeconds(tileAnimationDuration);
 
-        // ▼▼▼ 그리드 생성이 완전히 끝났다고 BattleEventManager에게 알립니다. ▼▼▼
         if (BattleEventManager.instance != null)
         {
             BattleEventManager.instance.RaiseGridGenerationComplete();
@@ -121,34 +117,67 @@ public class GridManager3D : MonoBehaviour
             yield return null;
         }
         tile.transform.localScale = targetScale;
-        // ※※※ 여기 있던 이벤트 호출 코드를 삭제했습니다. ※※※
     }
 
-    // --- 유닛 관리 기능 ---
+    // --- 유닛 관리 기능 (List 지원하도록 수정) ---
+
+    /// <summary>
+    /// [수정] 특정 위치에 유닛을 '추가'합니다.
+    /// </summary>
     public void RegisterUnitPosition(UnitController unit, Vector3Int position)
+    {
+        // 해당 위치에 리스트가 없으면 새로 생성
+        if (!unitsOnGrid.ContainsKey(position))
+        {
+            unitsOnGrid[position] = new List<UnitController>();
+        }
+        // 리스트에 아직 해당 유닛이 없으면 추가
+        if (!unitsOnGrid[position].Contains(unit))
+        {
+            unitsOnGrid[position].Add(unit);
+        }
+    }
+
+    /// <summary>
+    /// [수정] 특정 위치에서 유닛을 '제거'합니다.
+    /// </summary>
+    public void UnregisterUnitPosition(UnitController unit, Vector3Int position)
     {
         if (unitsOnGrid.ContainsKey(position))
         {
-            unitsOnGrid[position] = unit;
-        }
-        else
-        {
-            unitsOnGrid.Add(position, unit);
-        }
-    }
-
-    public void UnregisterUnitPosition(UnitController unit, Vector3Int position)
-    {
-        if (unitsOnGrid.ContainsKey(position) && unitsOnGrid[position] == unit)
-        {
-            unitsOnGrid.Remove(position);
+            unitsOnGrid[position].Remove(unit);
+            // 유닛을 제거한 후 리스트가 비었으면, 딕셔너리에서 해당 키를 삭제
+            if (unitsOnGrid[position].Count == 0)
+            {
+                unitsOnGrid.Remove(position);
+            }
         }
     }
 
+    /// <summary>
+    /// [수정] 특정 위치의 '첫 번째' 유닛을 반환합니다. (기존 코드 호환용)
+    /// </summary>
     public UnitController GetUnitAtPosition(Vector3Int position)
     {
-        unitsOnGrid.TryGetValue(position, out UnitController unit);
-        return unit;
+        if (unitsOnGrid.ContainsKey(position) && unitsOnGrid[position].Count > 0)
+        {
+            return unitsOnGrid[position][0]; // 리스트의 첫 번째 유닛 반환
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// [신규] 특정 위치에 있는 '모든' 유닛의 리스트를 반환합니다.
+    /// </summary>
+    public List<UnitController> GetUnitsAtPosition(Vector3Int position)
+    {
+        if (unitsOnGrid.ContainsKey(position))
+        {
+            // 리스트의 복사본을 반환하여 외부에서의 수정을 방지
+            return new List<UnitController>(unitsOnGrid[position]);
+        }
+        // 해당 위치에 유닛이 없으면 null 대신 빈 리스트를 반환
+        return new List<UnitController>();
     }
 
     public GameObject GetTileAtPosition(Vector3Int position)

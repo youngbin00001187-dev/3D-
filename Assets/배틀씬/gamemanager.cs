@@ -1,45 +1,74 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 
 /// <summary>
-/// 전투 씬의 전체적인 게임 흐름(라운드, 페이즈)을 관리하는 총괄 매니저입니다.
+/// 게임의 전체적인 흐름(준비 -> 카드선택 -> 액션)을 관리하는 중앙 매니저입니다.
+/// BattleEventManager로부터 신호를 받아, 플레이어와 적이 턴을 주고받는 액션 페이즈를 제어합니다.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
-    public static GameManager instance;
+    public static GameManager Instance { get; private set; }
 
-    public enum BattlePhase
-    {
-        Setup,              // 셋업 페이즈
-        Draw,               // 드로우 페이즈
-        CardSelection,      // 카드 선택 페이즈
-        ActionExecution,    // 액션 실행 페이즈
-        PostProcessing,     // 후처리 페이즈
-        RoundEnd            // 라운드 종료
-    }
-    public BattlePhase currentPhase { get; private set; }
+    public enum BattlePhase { Setup, PlayerTurn_CardSelection, ActionPhase, CombatEnded }
+    public BattlePhase currentPhase;
 
-    // Button 참조는 CardManager로 이전되었으므로 여기서 삭제합니다.
+    [Header("관리 대상 연결")]
+    public CardManager cardManager;
+    public ActionTurnManager actionTurnManager;
+    public PlayerController player;
+
+    [Header("UI 요소")]
+    [Tooltip("타일 클릭을 막는 3D Plane 오브젝트를 연결하세요.")]
+    public GameObject inputBlocker;
+
+    private List<UnitController> _allUnits = new List<UnitController>();
+    private List<EnemyController> _allEnemies = new List<EnemyController>();
+
+    private bool _isPlayerActionSubmitted = false;
+    private bool _isActionPhaseActive = false;
 
     void Awake()
     {
-        if (instance == null) { instance = this; }
-        else { Destroy(gameObject); }
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
 
-    // Start() 함수는 이제 비어있습니다.
-    private void Start()
+    void Start()
     {
+        SetInputBlocker(false);
+    }
+
+    void Update()
+    {
+        if (currentPhase == BattlePhase.ActionPhase)
+        {
+            UpdateInputBlockerStatus();
+        }
+    }
+
+    private void UpdateInputBlockerStatus()
+    {
+        if (actionTurnManager == null || player == null) return;
+        bool shouldBlock = actionTurnManager.IsProcessingQueue && !player.HasBreaksLeft();
+        SetInputBlocker(shouldBlock);
     }
 
     private void OnEnable()
     {
         if (BattleEventManager.instance != null)
         {
-            BattleEventManager.instance.OnBattleStart += OnBattleStarted;
-            // '액션 페이즈 시작' 이벤트를 구독합니다.
-            BattleEventManager.instance.OnActionPhaseStart += OnActionPhaseStarted;
+            // [수정] OnAllUnitsPlaced 대신 CardManager가 준비되었다는 신호를 듣습니다.
+            BattleEventManager.instance.OnCardManagerReady += OnCardManagerReadyHandler;
+            BattleEventManager.instance.OnActionPhaseStart += OnActionPhaseStartHandler;
         }
     }
 
@@ -47,63 +76,169 @@ public class GameManager : MonoBehaviour
     {
         if (BattleEventManager.instance != null)
         {
-            BattleEventManager.instance.OnBattleStart -= OnBattleStarted;
-            BattleEventManager.instance.OnActionPhaseStart -= OnActionPhaseStarted;
+            // [수정] 구독 해제도 변경합니다.
+            BattleEventManager.instance.OnCardManagerReady -= OnCardManagerReadyHandler;
+            BattleEventManager.instance.OnActionPhaseStart -= OnActionPhaseStartHandler;
         }
-    }
-
-    private void OnBattleStarted()
-    {
-        StartCoroutine(RoundCoroutine());
-    }
-
-    private IEnumerator RoundCoroutine()
-    {
-        // --- 1. 셋업 페이즈 ---
-        currentPhase = BattlePhase.Setup;
-        Debug.Log("Phase: Setup");
-        yield return null;
-
-        // --- 2. 드로우 페이즈 ---
-        currentPhase = BattlePhase.Draw;
-        Debug.Log("Phase: Draw");
-        // CardManager가 OnBattleStart 또는 OnNewRound 이벤트를 듣고 스스로 카드를 뽑습니다.
-        yield return null;
-
-        // --- 3. 카드 선택 페이즈 ---
-        currentPhase = BattlePhase.CardSelection;
-        Debug.Log("Phase: CardSelection");
-        // 이 상태에서는 CardManager가 '진행' 버튼이 눌리기를 기다립니다.
     }
 
     /// <summary>
-    /// '액션 페이즈 시작' 신호를 받았을 때 호출됩니다.
+    /// [수정] CardManager가 준비 완료 신호를 보냈을 때 호출되는 핸들러입니다.
     /// </summary>
-    private void OnActionPhaseStarted()
+    private void OnCardManagerReadyHandler()
     {
-        if (currentPhase == BattlePhase.CardSelection)
+        _allUnits = FindObjectsByType<UnitController>(FindObjectsSortMode.None).ToList();
+        _allEnemies = FindObjectsByType<EnemyController>(FindObjectsSortMode.None).ToList();
+        player = FindObjectsByType<PlayerController>(FindObjectsSortMode.None).FirstOrDefault();
+        StartPreparePhase();
+    }
+
+    private void StartPreparePhase()
+    {
+        _isActionPhaseActive = false;
+        foreach (var unit in _allUnits)
         {
-            StartCoroutine(ActionPhaseCoroutine());
+            if (unit != null) unit.ResetActions();
         }
+        if (player != null)
+        {
+            player.ResetBreaks();
+        }
+        SetCurrentPhase(BattlePhase.Setup);
+
+        foreach (var enemy in _allEnemies)
+        {
+            if (enemy != null)
+            {
+                enemy.PlanNextAction();
+                enemy.UpdateIntentDisplay();
+            }
+        }
+
+        SetCurrentPhase(BattlePhase.PlayerTurn_CardSelection);
+        cardManager.DrawHand();
+        Debug.Log("<color=yellow>=== 준비 페이즈 완료. 카드 선택을 시작하세요. ===</color>");
     }
 
-    private IEnumerator ActionPhaseCoroutine()
+    private void OnActionPhaseStartHandler()
     {
-        // --- 4. 액션 실행 페이즈 ---
-        currentPhase = BattlePhase.ActionExecution;
-        Debug.Log("Phase: ActionExecution");
-        // TODO: TurnManager에게 액션 큐 처리를 지시
-        yield return null;
-
-        // --- 5. 후처리 페이즈 ---
-        currentPhase = BattlePhase.PostProcessing;
-        Debug.Log("Phase: PostProcessing");
-        yield return null;
-
-        // --- 6. 라운드 종료 ---
-        currentPhase = BattlePhase.RoundEnd;
-        Debug.Log("Phase: RoundEnd");
-
-        StartCoroutine(RoundCoroutine()); // 다음 라운드를 시작합니다.
+        if (_isActionPhaseActive) return;
+        _isActionPhaseActive = true;
+        SetCurrentPhase(BattlePhase.ActionPhase);
+        StartCoroutine(ActionPhaseLoopCoroutine());
     }
+
+    public void NotifyPlayerActionSubmitted()
+    {
+        _isPlayerActionSubmitted = true;
+    }
+
+    private IEnumerator ActionPhaseLoopCoroutine()
+    {
+        while (cardManager.GetActionCardCount() > 0)
+        {
+            Debug.Log("<color=cyan>플레이어 턴: 행동을 선택하세요.</color>");
+            _isPlayerActionSubmitted = false;
+            yield return new WaitUntil(() => _isPlayerActionSubmitted);
+
+            Debug.Log("<color=red>적 턴: 모든 적이 행동을 큐에 추가합니다.</color>");
+            foreach (var enemy in _allEnemies.Where(e => e != null && e.HasMoreActionsThisRound()))
+            {
+                enemy.CommitActionToQueue();
+                enemy.DecrementActionsLeft();
+            }
+
+            Debug.Log("<color=yellow>큐 처리 시작...</color>");
+            yield return StartCoroutine(actionTurnManager.ProcessActionQueueCoroutine());
+            Debug.Log("<color=yellow>큐 처리 완료.</color>");
+
+            if (CheckForCombatEnd()) yield break;
+
+            foreach (var enemy in _allEnemies.Where(e => e != null && e.HasMoreActionsThisRound()))
+            {
+                enemy.PlanNextAction();
+                enemy.UpdateIntentDisplay();
+            }
+
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        Debug.Log("<color=red>플레이어 행동 종료. 남은 적의 턴을 진행합니다.</color>");
+        while (_allEnemies.Any(e => e != null && e.HasMoreActionsThisRound()))
+        {
+            Debug.Log("<color=orange>남은 적들이 다음 행동을 계획하고 표시합니다...</color>");
+            foreach (var enemy in _allEnemies.Where(e => e != null && e.HasMoreActionsThisRound()))
+            {
+                enemy.PlanNextAction();
+                enemy.UpdateIntentDisplay();
+            }
+
+            yield return new WaitForSeconds(1.0f);
+
+            foreach (var enemy in _allEnemies.Where(e => e != null && e.HasMoreActionsThisRound()))
+            {
+                enemy.CommitActionToQueue();
+                enemy.DecrementActionsLeft();
+            }
+
+            Debug.Log("<color=yellow>큐 처리 시작...</color>");
+            yield return StartCoroutine(actionTurnManager.ProcessActionQueueCoroutine());
+            Debug.Log("<color=yellow>큐 처리 완료.</color>");
+
+            if (CheckForCombatEnd()) yield break;
+
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        Debug.Log("<color=green>=== 모든 행동 완료. 라운드를 종료합니다. ===</color>");
+        EndRound();
+    }
+
+    public void EndRound()
+    {
+        _isActionPhaseActive = false;
+        SetInputBlocker(false);
+        if (CheckForCombatEnd()) return;
+        StartPreparePhase();
+    }
+
+    #region 전투 종료 및 유틸리티 함수
+
+    public bool CheckForCombatEnd()
+    {
+        if (!_allEnemies.Any(e => e != null && e.currentHealth > 0)) { OnCombatVictory(); return true; }
+        if (player != null && player.currentHealth <= 0) { OnCombatDefeat(); return true; }
+        return false;
+    }
+
+    private void OnCombatVictory()
+    {
+        if (currentPhase == BattlePhase.CombatEnded) return;
+        Debug.Log("<color=yellow>===== 전투 승리! =====</color>");
+        SetCurrentPhase(BattlePhase.CombatEnded);
+        SetInputBlocker(true);
+    }
+
+    private void OnCombatDefeat()
+    {
+        if (currentPhase == BattlePhase.CombatEnded) return;
+        Debug.Log("<color=red>===== 전투 패배... =====</color>");
+        SetCurrentPhase(BattlePhase.CombatEnded);
+        SetInputBlocker(true);
+    }
+
+    public void SetCurrentPhase(BattlePhase newPhase)
+    {
+        currentPhase = newPhase;
+        Debug.Log($"[GameManager] 현재 페이즈: {newPhase}");
+    }
+
+    private void SetInputBlocker(bool isBlocked)
+    {
+        if (inputBlocker == null) return;
+        inputBlocker.SetActive(isBlocked);
+        Debug.Log($"[GameManager] 3D Input Blocker {(isBlocked ? "ON" : "OFF")}");
+    }
+
+    #endregion
 }

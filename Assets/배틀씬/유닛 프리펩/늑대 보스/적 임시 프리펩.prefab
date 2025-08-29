@@ -45,9 +45,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 01d93b06e7141fc4b982908bc7933d7a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  unitType: 1
   maxHealth: 100
   currentHealth: 0
+  currentState: 0
+  maxActionsPerTurn: 2
   currentTile: {fileID: 0}
+  hitColor: {r: 1, g: 0, b: 0, a: 1}
+  hitColorDuration: 0.15
+  shakeIntensity: 0.1
+  shakeDuration: 0.2
   enemyData: {fileID: 11400000, guid: a12d4063c141a9543b65ef6958342251, type: 2}
 --- !u!1 &6756712445940432449
 GameObject:

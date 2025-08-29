@@ -466,7 +466,7 @@ TextureImporter:
       rect:
         serializedVersion: 2
         x: 35
-        y: 766
+        y: 767
         width: 23
         height: 37
       alignment: 7
@@ -704,7 +704,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_27"
+      name: pattack1
       rect:
         serializedVersion: 2
         x: 35
@@ -726,15 +726,15 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_28"
+      name: pattack2
       rect:
         serializedVersion: 2
         x: 118
         y: 583
         width: 57
         height: 57
-      alignment: 7
-      pivot: {x: 0.5, y: 0}
+      alignment: 9
+      pivot: {x: 0.3874624, y: 0.22507517}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -748,15 +748,15 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_29"
+      name: pattack3
       rect:
         serializedVersion: 2
         x: 212
         y: 587
         width: 39
         height: 43
-      alignment: 7
-      pivot: {x: 0.5, y: 0}
+      alignment: 9
+      pivot: {x: 0.60776305, y: 0.21847463}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -770,15 +770,15 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_30"
+      name: Pattack4
       rect:
         serializedVersion: 2
         x: 308
         y: 592
         width: 35
         height: 38
-      alignment: 7
-      pivot: {x: 0.5, y: 0}
+      alignment: 9
+      pivot: {x: 0.69071305, y: 0.11710398}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -1333,11 +1333,15 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
+      Pattack4: -603813447
       Pldle1: -583585954
       Pldle2: 1972471010
       Pldle3: -636324474
       Pldle4: 1408679897
       Pldle5: 1145852039
+      pattack1: -169645471
+      pattack2: 1752646442
+      pattack3: -1612168524
       prun1: -672107287
       prun2: 2078793865
       prun3: 691001975
@@ -1357,10 +1361,6 @@ TextureImporter:
       "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_24": 1160409130
       "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_25": 1394410229
       "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_26": -936948297
-      "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_27": -169645471
-      "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_28": 1752646442
-      "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_29": -1612168524
-      "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_30": -603813447
       "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_31": 382227663
       "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_32": -861222272
       "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_33": -2041636231

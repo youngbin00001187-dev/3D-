@@ -13,9 +13,9 @@ MonoBehaviour:
   m_Name: Trinityswod 2
   m_EditorClassIdentifier: 
   cardID: 1
-  cardName: 'Trinity Blade II: Terrestrial'
-  cardImage: {fileID: 21300000, guid: bb38b8ff0dcd80446acad0d225642220, type: 3}
-  description: 
+  cardName: Trinity Blade II
+  cardImage: {fileID: 21300000, guid: aae961787980cf845aeb29b2aaa908cd, type: 3}
+  description: 'Trinity Blade II: Terrestrial'
   intentPredictionRange:
   - {x: 1, y: 0, z: 1}
   - {x: -1, y: 0, z: -1}

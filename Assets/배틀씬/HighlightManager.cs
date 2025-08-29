@@ -13,7 +13,6 @@ public class HighlightManager : MonoBehaviour
     // 하이라이트의 종류와 우선순위를 정의하는 Enum입니다. (위에 있을수록 우선순위가 높음)
     public enum HighlightType
     {
-       
         PlayerTarget,  // 마우스 호버 (디버그용, 최우선)
         PlayerPreview,      // 플레이어의 예상 공격 범위
         EnemyIntent,         // 적의 공격 예고 범위
@@ -35,12 +34,8 @@ public class HighlightManager : MonoBehaviour
     [Tooltip("타일이 있는 레이어를 지정해야 합니다.")]
     public LayerMask tileLayer;
 
-    // 이전에 호버했던 타일을 기억하기 위한 변수
     private Tile3D _lastHoveredTile;
-
-    // ▼▼▼ 이 부분의 오타를 수정했습니다 ▼▼▼
     private Dictionary<HighlightType, Color> highlightColorMap = new Dictionary<HighlightType, Color>();
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
     private Dictionary<Tile3D, List<HighlightType>> highlightedTiles = new Dictionary<Tile3D, List<HighlightType>>();
     private Dictionary<Tile3D, Color> originalTileColors = new Dictionary<Tile3D, Color>();
 
@@ -137,9 +132,37 @@ public class HighlightManager : MonoBehaviour
             {
                 tile.MyMaterial.color = originalTileColors[tile];
             }
+            if (highlightedTiles.ContainsKey(tile))
+            {
+                highlightedTiles.Remove(tile);
+            }
+            if (originalTileColors.ContainsKey(tile))
+            {
+                originalTileColors.Remove(tile);
+            }
+        }
+    }
 
-            highlightedTiles.Remove(tile);
-            originalTileColors.Remove(tile);
+    /// <summary>
+    /// 특정 타입의 하이라이트를 모두 제거하는 함수를 추가합니다.
+    /// </summary>
+    public void ClearAllHighlightsOfType(HighlightType type)
+    {
+        List<Tile3D> tilesToRemove = new List<Tile3D>();
+
+        // 먼저 제거할 타일을 목록화합니다.
+        foreach (var pair in highlightedTiles)
+        {
+            if (pair.Value.Contains(type))
+            {
+                tilesToRemove.Add(pair.Key);
+            }
+        }
+
+        // 목록화된 타일의 하이라이트를 제거합니다.
+        foreach (var tile in tilesToRemove)
+        {
+            RemoveHighlight(new List<Tile3D> { tile }, type);
         }
     }
 }
