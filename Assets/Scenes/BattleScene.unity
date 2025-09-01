@@ -1002,8 +1002,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   vfxPrefabList: []
-  damageNumberPrefab: {fileID: 0}
-  worldSpaceCanvas: {fileID: 0}
+  damageNumberPrefab: {fileID: 556142637778594894, guid: 7dfc25ce270db684a8808568318ab3de, type: 3}
 --- !u!1 &716725044
 GameObject:
   m_ObjectHideFlags: 0
@@ -1573,6 +1572,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 977f92f2b8b30e84b828e40687f5cc9d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  timeScaleOnBreak: 0.4
+  timeEffectLingerDuration: 1
 --- !u!1 &1212801972
 GameObject:
   m_ObjectHideFlags: 0
@@ -1586,7 +1587,7 @@ GameObject:
   - component: {fileID: 1212801974}
   m_Layer: 0
   m_Name: "\uC720\uB2DB\uCE74\uBA54\uB77C"
-  m_TagString: MainCamera
+  m_TagString: GameplayCamera
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1965,8 +1966,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   gameManager: {fileID: 486143758}
+  normalActionPreDelay: 0.1
   normalActionDelay: 0.5
-  interruptActionDelay: 0.2
+  interruptActionPreDelay: 0.1
+  interruptActionDelay: 0.5
 --- !u!1 &1441619624
 GameObject:
   m_ObjectHideFlags: 0

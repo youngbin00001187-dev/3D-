@@ -6,6 +6,7 @@ TagManager:
   tags:
   - unit
   - tile
+  - GameplayCamera
   layers:
   - Default
   - TransparentFX

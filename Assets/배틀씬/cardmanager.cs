@@ -31,6 +31,7 @@ public class CardManager : MonoBehaviour
     // 현재 타겟팅 중인 카드
     private CardDataSO _targetingCard;
     private GameObject _targetingCardUIObject;
+    private Tile3D _lastHoveredTileForPreview;
 
     private HighlightManager _highlightManager;
     private List<Tile3D> _currentPreviewTiles = new List<Tile3D>();
@@ -74,18 +75,59 @@ public class CardManager : MonoBehaviour
 
     void Update()
     {
-        if (_targetingCard != null && !_isPreviewSuppressedByHover)
+        // 상태 1: 핸드의 다른 카드를 호버하고 있을 때 (_isPreviewSuppressedByHover == true)
+        // 이 경우, Update 메서드는 아무것도 하지 않고 즉시 종료하여 HandleCardHoverEnter가 그린 미리보기를 보존합니다.
+        if (_isPreviewSuppressedByHover)
         {
-            UpdateTargetingAura(_targetingCard);
+            return;
         }
-        else if (!_isPreviewSuppressedByHover)
+
+        // 상태 2: 타겟팅 중인 카드가 없을 때
+        if (_targetingCard == null)
         {
+            // 남아있을 수 있는 모든 관련 미리보기를 깨끗하게 지웁니다.
             if (_highlightManager != null)
             {
                 _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerPreview);
+                _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerTarget);
             }
+            _lastHoveredTileForPreview = null;
+            return;
         }
 
+        // --- 상태 3: 타겟팅 카드가 있고, 다른 카드를 호버하고 있지 않을 때 ---
+
+        // 3-1. 항상 기본 사거리(PlayerPreview)를 표시합니다.
+        UpdateTargetingAura(_targetingCard);
+
+        // 3-2. 실시간 AOE 미리보기(PlayerTarget) 로직을 처리합니다.
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+        Tile3D currentHoveredTile = null;
+
+        if (Physics.Raycast(ray, out hit, 200f))
+        {
+            currentHoveredTile = hit.collider.GetComponent<Tile3D>();
+        }
+
+        if (currentHoveredTile != _lastHoveredTileForPreview)
+        {
+            // 이전에 표시했던 PlayerTarget 하이라이트는 무조건 지웁니다.
+            _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerTarget);
+
+            // 마우스가 유효한 타일 위에 있다면 PlayerTarget 하이라이트를 "추가"합니다.
+            if (currentHoveredTile != null && _currentPreviewTiles.Contains(currentHoveredTile))
+            {
+                GameAction firstAction = _targetingCard.actionSequence[0];
+                var impactTiles = firstAction.GetActionImpactTiles(playerController, currentHoveredTile.gameObject)
+                                             .Select(t => t.GetComponent<Tile3D>())
+                                             .Where(t => t != null).ToList();
+                _highlightManager.AddHighlight(impactTiles, HighlightManager.HighlightType.PlayerTarget);
+            }
+            _lastHoveredTileForPreview = currentHoveredTile;
+        }
+
+        // 3-3. 클릭 처리는 액션 페이즈일 때만 작동합니다.
         if (GameManager.Instance != null && GameManager.Instance.currentPhase == GameManager.BattlePhase.ActionPhase)
         {
             HandleMouseClick();

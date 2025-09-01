@@ -36,7 +36,7 @@ MonoBehaviour:
         - {x: 0, y: 0, z: 1}
         - {x: -1, y: 0, z: 0}
         - {x: 0, y: 0, z: -1}
-        damage: 0
+        damage: 5
         areaOfEffect:
         - {x: 0, y: 0, z: 0}
         - {x: 0, y: 0, z: 1}

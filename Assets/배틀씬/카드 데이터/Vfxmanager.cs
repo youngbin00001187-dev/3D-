@@ -1,6 +1,6 @@
 using UnityEngine;
-using System.Collections.Generic; // List를 사용하기 위해 필요합니다.
-using TMPro; // TextMeshPro를 사용하기 위해 필요합니다.
+using System.Collections.Generic;
+using TMPro;
 
 /// <summary>
 /// 게임의 모든 시각 효과(VFX)를 중앙에서 관리하고 재생하는 싱글턴 매니저입니다.
@@ -13,12 +13,9 @@ public class VFXManager : MonoBehaviour
     [Tooltip("모든 VFX 프리팹을 여기에 등록합니다. 리스트의 순서가 VFX ID가 됩니다. (0번, 1번, 2번...)")]
     public List<GameObject> vfxPrefabList;
 
-    [Header("데미지 숫자 설정 (기존 기능)")]
-    [Tooltip("데미지 숫자를 표시할 UI 프리팹")]
+    [Header("데미지 숫자 설정")]
+    [Tooltip("데미지 숫자를 표시할 UI 프리팹. FloatingNumber.cs 스크립트를 포함해야 합니다.")]
     public GameObject damageNumberPrefab;
-
-    [Tooltip("데미지 숫자가 생성될 UI 캔버스")]
-    public Canvas worldSpaceCanvas;
 
     void Awake()
     {
@@ -29,26 +26,16 @@ public class VFXManager : MonoBehaviour
     /// <summary>
     /// 지정된 위치에 ID에 해당하는 이펙트를 재생합니다.
     /// </summary>
-    /// <param name="position">이펙트가 생성될 월드 좌표</param>
-    /// <param name="vfxId">vfxPrefabList에 등록된 이펙트의 ID (리스트 순서)</param>
     public void PlayHitEffect(Vector3 position, int vfxId)
     {
-        // ▼▼▼ 여기에 디버그 로그 추가 ▼▼▼
-        Debug.Log($"<color=lightblue>[VFXManager] PlayHitEffect가 ID: {vfxId} 로 호출되었습니다.</color>");
-        // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-
-        // ID가 유효한 범위 내에 있는지 확인합니다. (-1은 '효과 없음'을 의미)
         if (vfxId < 0 || vfxId >= vfxPrefabList.Count)
         {
-            return; // 유효하지 않은 ID면 아무것도 하지 않고 함수를 종료합니다.
+            return;
         }
 
-        // ID를 이용해 리스트에서 실제 프리팹을 가져옵니다.
         GameObject effectPrefab = vfxPrefabList[vfxId];
-
         if (effectPrefab != null)
         {
-            // 프리팹을 복제하여 이펙트를 생성합니다.
             Instantiate(effectPrefab, position, Quaternion.identity);
         }
         else
@@ -58,22 +45,30 @@ public class VFXManager : MonoBehaviour
     }
 
     /// <summary>
-    /// 지정된 위치에 데미지 숫자를 표시합니다. (이 기능은 변경되지 않았습니다)
+    /// 지정된 부모 캔버스의 특정 위치에 데미지/힐량 숫자를 표시합니다.
     /// </summary>
+    /// <param name="parentCanvas">숫자가 생성될 부모 캔버스의 Transform. null일 경우 씬 최상단에 생성됩니다.</param>
     /// <param name="position">숫자가 생성될 기준 월드 좌표</param>
-    /// <param name="damage">표시할 데미지 수치</param>
-    public void ShowDamageNumber(Vector3 position, int damage)
+    /// <param name="amount">표시할 숫자 (음수: 데미지, 양수: 힐)</param>
+    public void ShowDamageNumber(Transform parentCanvas, Vector3 position, int amount)
     {
-        if (damageNumberPrefab != null && worldSpaceCanvas != null)
+        if (damageNumberPrefab == null)
         {
-            GameObject damageTextObj = Instantiate(damageNumberPrefab, worldSpaceCanvas.transform);
-            damageTextObj.transform.position = position;
+            Debug.LogError("[VFXManager] 데미지 숫자 프리펩(damageNumberPrefab)이 할당되지 않았습니다! 인스펙터에서 설정해주세요.");
+            return;
+        }
 
-            TextMeshProUGUI tmp = damageTextObj.GetComponentInChildren<TextMeshProUGUI>();
-            if (tmp != null)
-            {
-                tmp.text = damage.ToString();
-            }
+        GameObject numberObject = Instantiate(damageNumberPrefab, parentCanvas);
+        numberObject.transform.position = position;
+
+        FloatingNumber floatingNumber = numberObject.GetComponent<FloatingNumber>();
+        if (floatingNumber != null)
+        {
+            floatingNumber.Setup(amount);
+        }
+        else
+        {
+            Debug.LogWarning($"'{damageNumberPrefab.name}' 프리펩에 FloatingNumber.cs 스크립트가 없습니다!", damageNumberPrefab);
         }
     }
 }
