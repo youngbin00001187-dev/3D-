@@ -15,8 +15,11 @@ MonoBehaviour:
   enemyName: "\uB291\uB300"
   enemyPrefab: {fileID: 5691773571413991148, guid: 81e8e467e1569fa4282b9986a256fec6, type: 3}
   maxHealth: 50
-  actionsPerTurn: 1
+  actionsPerTurn: 2
   actionPattern:
   - actionName: "\uC774\uB3D9"
     movementType: 0
-    referenceCard: {fileID: 11400000, guid: f1c15fdcd889ccb459b48ccd78ee6a42, type: 2}
+    referenceCard: {fileID: 11400000, guid: 159f522263abcab4a8e1b45a758d2d8c, type: 2}
+  - actionName: "\uB291\uB300\uBB3C\uAE30"
+    movementType: 0
+    referenceCard: {fileID: 11400000, guid: 6156fa6d06a7a8c44bd18f3608bb78b9, type: 2}

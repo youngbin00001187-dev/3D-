@@ -19,10 +19,7 @@ MonoBehaviour:
 
     [Move][Knockback]'
   intentPredictionRange:
-  - {x: 1, y: 0, z: 0}
-  - {x: 0, y: 0, z: 1}
-  - {x: -1, y: 0, z: 0}
-  - {x: 0, y: 0, z: -1}
+  - {x: 0, y: 0, z: 0}
   actionSequence:
   - rid: 6613284853930000444
   references:
@@ -41,5 +38,5 @@ MonoBehaviour:
         - {x: 0, y: 0, z: 1}
         - {x: -1, y: 0, z: 0}
         - {x: 0, y: 0, z: -1}
-        moveSpeed: 8
+        moveSpeed: 3
         motionID: 1

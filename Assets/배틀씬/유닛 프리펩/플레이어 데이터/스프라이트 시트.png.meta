@@ -462,7 +462,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_16"
+      name: PA 1
       rect:
         serializedVersion: 2
         x: 35
@@ -484,7 +484,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_17"
+      name: PA2
       rect:
         serializedVersion: 2
         x: 132
@@ -506,15 +506,15 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_18"
+      name: PA
       rect:
         serializedVersion: 2
         x: 215
         y: 763
         width: 68
         height: 48
-      alignment: 7
-      pivot: {x: 0.5, y: 0}
+      alignment: 9
+      pivot: {x: 0.31472263, y: 0.046895344}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -528,7 +528,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_19"
+      name: PA4
       rect:
         serializedVersion: 2
         x: 311
@@ -550,7 +550,7 @@ TextureImporter:
       edges: []
       weights: []
     - serializedVersion: 2
-      name: "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_20"
+      name: PA5
       rect:
         serializedVersion: 2
         x: 407
@@ -1333,6 +1333,11 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
+      PA: -963032476
+      PA 1: 237561333
+      PA2: -1308046886
+      PA4: 752088935
+      PA5: 118091094
       Pattack4: -603813447
       Pldle1: -583585954
       Pldle2: 1972471010
@@ -1350,11 +1355,6 @@ TextureImporter:
       prun6: 2070033291
       prun7: -1210217833
       prun8: 1796701990
-      "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_16": 237561333
-      "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_17": -1308046886
-      "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_18": -963032476
-      "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_19": 752088935
-      "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_20": 118091094
       "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_21": -1508412558
       "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_22": -1150796282
       "\uC2A4\uD504\uB77C\uC774\uD2B8 \uC2DC\uD2B8_23": -675631318

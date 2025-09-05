@@ -19,10 +19,7 @@ MonoBehaviour:
 
     [Attack]'
   intentPredictionRange:
-  - {x: 1, y: 0, z: 0}
-  - {x: 0, y: 0, z: 1}
-  - {x: -1, y: 0, z: 0}
-  - {x: 0, y: 0, z: -1}
+  - {x: 0, y: 0, z: 0}
   actionSequence:
   - rid: 6613284831482609665
   references:
@@ -41,7 +38,7 @@ MonoBehaviour:
         - {x: 0, y: 0, z: 1}
         - {x: -1, y: 0, z: 0}
         - {x: 0, y: 0, z: -1}
-        damage: 5
+        damage: 20
         areaOfEffect:
         - {x: 0, y: 0, z: 0}
         motionID: 2

@@ -41,7 +41,7 @@ MonoBehaviour:
         - {x: 0, y: 0, z: 1}
         - {x: -1, y: 0, z: 0}
         - {x: 0, y: 0, z: -1}
-        damage: 5
+        damage: 25
         areaOfEffect:
         - {x: 0, y: 0, z: 0}
         motionID: 2
