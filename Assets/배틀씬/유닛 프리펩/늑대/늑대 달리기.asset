@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8dc7751f4733ad942bdf13b69e667309, type: 3}
+  m_Name: "\uB291\uB300 \uB2EC\uB9AC\uAE30"
+  m_EditorClassIdentifier: 
+  cardID: 1
+  cardName: Trinity Step I
+  cardImage: {fileID: 21300000, guid: 9b77cd77c8f1be142a14650decb6b611, type: 3}
+  description: 'Trinity Step I: Celestial
+
+    [Move][Knockback]'
+  intentPredictionRange:
+  - {x: 1, y: 0, z: 0}
+  - {x: 0, y: 0, z: 1}
+  - {x: -1, y: 0, z: 0}
+  - {x: 0, y: 0, z: -1}
+  actionSequence:
+  - rid: 6613284853930000444
+  references:
+    version: 2
+    RefIds:
+    - rid: 6613284853930000444
+      type: {class: MoveAction, ns: , asm: Assembly-CSharp}
+      data:
+        attachedEffects:
+        - effectType: 1
+          timing: 1
+          waitForCompletion: 1
+        vfxEffects: []
+        movementRange:
+        - {x: 1, y: 0, z: 0}
+        - {x: 0, y: 0, z: 1}
+        - {x: -1, y: 0, z: 0}
+        - {x: 0, y: 0, z: -1}
+        moveSpeed: 8
+        motionID: 1

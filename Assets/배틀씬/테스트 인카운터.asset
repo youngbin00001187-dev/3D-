@@ -15,4 +15,4 @@ MonoBehaviour:
   encounterName: 
   enemies:
   - {fileID: 11400000, guid: a12d4063c141a9543b65ef6958342251, type: 2}
-  - {fileID: 11400000, guid: a12d4063c141a9543b65ef6958342251, type: 2}
+  - {fileID: 11400000, guid: 9eaa7b86d9ad9514eb05b2c06f21c8ab, type: 2}

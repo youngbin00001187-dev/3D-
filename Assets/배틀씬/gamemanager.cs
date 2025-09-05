@@ -135,25 +135,30 @@ public class GameManager : MonoBehaviour
 
     private IEnumerator ActionPhaseLoopCoroutine()
     {
+        // '플레이어 행동 루프'
         while (cardManager.GetActionCardCount() > 0)
         {
             Debug.Log("<color=cyan>플레이어 턴: 행동을 선택하세요.</color>");
             _isPlayerActionSubmitted = false;
             yield return new WaitUntil(() => _isPlayerActionSubmitted);
 
-            Debug.Log("<color=red>적 턴: 모든 적이 행동을 큐에 추가합니다.</color>");
+            // 1. 적은 이미 '계획된' 행동을 실행(큐에 등록)합니다.
+            Debug.Log("<color=red>적 턴: 모든 적이 계획된 행동을 큐에 추가합니다.</color>");
             foreach (var enemy in _allEnemies.Where(e => e != null && e.HasMoreActionsThisRound()))
             {
                 enemy.CommitActionToQueue();
                 enemy.DecrementActionsLeft();
             }
 
+            // 2. 액션 큐를 처리합니다.
             Debug.Log("<color=yellow>큐 처리 시작...</color>");
             yield return StartCoroutine(actionTurnManager.ProcessActionQueueCoroutine());
             Debug.Log("<color=yellow>큐 처리 완료.</color>");
 
             if (CheckForCombatEnd()) yield break;
 
+            // 3. 모든 액션 처리가 끝난 후, 적은 '다음' 행동을 계획하고 표시합니다.
+            Debug.Log("<color=orange>적들이 다음 행동을 계획하고 표시합니다...</color>");
             foreach (var enemy in _allEnemies.Where(e => e != null && e.HasMoreActionsThisRound()))
             {
                 enemy.PlanNextAction();
@@ -164,28 +169,35 @@ public class GameManager : MonoBehaviour
         }
 
         Debug.Log("<color=red>플레이어 행동 종료. 남은 적의 턴을 진행합니다.</color>");
+
+        // '남은 적 행동 루프'
         while (_allEnemies.Any(e => e != null && e.HasMoreActionsThisRound()))
         {
-            Debug.Log("<color=orange>남은 적들이 다음 행동을 계획하고 표시합니다...</color>");
-            foreach (var enemy in _allEnemies.Where(e => e != null && e.HasMoreActionsThisRound()))
-            {
-                enemy.PlanNextAction();
-                enemy.UpdateIntentDisplay();
-            }
-
+            // 이 시점에 적의 다음 행동은 이미 계획되어 있고 의도도 표시된 상태입니다.
+            // 플레이어가 의도를 볼 시간을 줍니다.
             yield return new WaitForSeconds(1.0f);
 
+            // 1. 적은 이미 '계획된' 행동을 실행(큐에 등록)합니다.
             foreach (var enemy in _allEnemies.Where(e => e != null && e.HasMoreActionsThisRound()))
             {
                 enemy.CommitActionToQueue();
                 enemy.DecrementActionsLeft();
             }
 
+            // 2. 액션 큐를 처리합니다.
             Debug.Log("<color=yellow>큐 처리 시작...</color>");
             yield return StartCoroutine(actionTurnManager.ProcessActionQueueCoroutine());
             Debug.Log("<color=yellow>큐 처리 완료.</color>");
 
             if (CheckForCombatEnd()) yield break;
+
+            // 3. 모든 액션 처리가 끝난 후, 다음 루프를 위해 '다음' 행동을 계획하고 표시합니다.
+            Debug.Log("<color=orange>적들이 다음 행동을 계획하고 표시합니다...</color>");
+            foreach (var enemy in _allEnemies.Where(e => e != null && e.HasMoreActionsThisRound()))
+            {
+                enemy.PlanNextAction();
+                enemy.UpdateIntentDisplay();
+            }
 
             yield return new WaitForSeconds(0.5f);
         }

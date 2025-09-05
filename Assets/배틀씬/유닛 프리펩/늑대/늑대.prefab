@@ -123,10 +123,10 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3524008348529016255}
-  - component: {fileID: 110408512049523945}
   - component: {fileID: 1755268967940934699}
+  - component: {fileID: 5237811769818233794}
   m_Layer: 8
-  m_Name: "\uC801 \uACF5\uD1B5 \uD504\uB9AC\uD3A9"
+  m_Name: "\uB291\uB300"
   m_TagString: unit
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -153,28 +153,6 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!95 &110408512049523945
-Animator:
-  serializedVersion: 7
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5691773571413991148}
-  m_Enabled: 1
-  m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 876d4d0a5b3f1d2418b4021f933403f4, type: 2}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_StabilizeFeet: 0
-  m_AnimatePhysics: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorStateOnDisable: 0
-  m_WriteDefaultValuesOnDisable: 0
 --- !u!114 &1755268967940934699
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -197,7 +175,29 @@ MonoBehaviour:
   hitColorDuration: 0.15
   shakeIntensity: 0.1
   shakeDuration: 0.2
-  enemyData: {fileID: 11400000, guid: a12d4063c141a9543b65ef6958342251, type: 2}
+  enemyData: {fileID: 11400000, guid: 9eaa7b86d9ad9514eb05b2c06f21c8ab, type: 2}
+--- !u!95 &5237811769818233794
+Animator:
+  serializedVersion: 7
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5691773571413991148}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 3924c0dd4f6f8cc47a810d3f0952617a, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_AnimatePhysics: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
 --- !u!1 &6756712445940432449
 GameObject:
   m_ObjectHideFlags: 0
@@ -209,7 +209,7 @@ GameObject:
   - component: {fileID: 2890089310412460483}
   - component: {fileID: 2640443720784511024}
   m_Layer: 8
-  m_Name: "\uD50C\uB808\uC774\uC5B4 \uC774\uBBF8\uC9C0"
+  m_Name: "\uB291\uB300 \uC774\uBBF8\uC9C0"
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

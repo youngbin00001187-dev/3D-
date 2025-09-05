@@ -1,5 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
+using System.Collections;
 
 public class BattleUIManager : MonoBehaviour
 {
@@ -10,6 +12,19 @@ public class BattleUIManager : MonoBehaviour
     public Button proceedButton;
     [Tooltip("플레이어의 손패 카드들이 표시되는 패널입니다.")]
     public GameObject handPanel;
+
+    [Header("덱 UI 연결")]
+    [Tooltip("덱의 남은 양을 시각적으로 보여줄 이미지입니다.")]
+    public Image deckImage;
+    [Tooltip("덱의 남은 장 수를 표시할 텍스트입니다.")]
+    public TextMeshProUGUI deckCountText;
+    [Tooltip("덱 이미지의 최소 높이 비율입니다. (예: 0.2 = 20%)")]
+    [Range(0f, 1f)]
+    public float deckImageMinHeightRatio = 0.2f;
+
+    private int _initialDeckSize = 1;
+    private float _initialDeckImageHeight;
+    private bool _isDeckUIInitialized = false;
 
     void Awake()
     {
@@ -22,58 +37,103 @@ public class BattleUIManager : MonoBehaviour
             Destroy(gameObject);
         }
     }
-    void Update()
+
+    private void OnEnable()
     {
-        // 스페이스바를 눌렀는지 확인합니다.
-        if (Input.GetKeyDown(KeyCode.Space))
+        if (BattleEventManager.instance != null)
         {
-            // [수정] 1순위: '진행' 버튼이 활성화되어 있는지 먼저 확인합니다.
-            if (proceedButton != null && proceedButton.gameObject.activeInHierarchy)
-            {
-                // 활성화되어 있다면, 버튼 클릭 함수를 직접 호출합니다.
-                Debug.Log("[BattleUIManager] 스페이스바 입력 감지. '진행' 버튼을 클릭합니다.");
-                OnProceedButtonClicked();
-            }
-            // 2순위: '진행' 버튼이 비활성화 상태이고, 카드 선택 단계일 때 멀리건을 시도합니다.
-            else if (GameManager.Instance != null &&
-                GameManager.Instance.currentPhase == GameManager.BattlePhase.PlayerTurn_CardSelection)
-            {
-                if (CardManager.instance != null)
-                {
-                    Debug.Log("[BattleUIManager] 스페이스바 입력 감지. 멀리건을 시도합니다.");
-                    CardManager.instance.PerformMulligan();
-                }
-            }
+            BattleEventManager.instance.OnCardManagerReady += HandleCardManagerReady;
         }
     }
+
+    private void OnDisable()
+    {
+        if (BattleEventManager.instance != null)
+        {
+            BattleEventManager.instance.OnCardManagerReady -= HandleCardManagerReady;
+        }
+    }
+
     void Start()
     {
         if (proceedButton != null)
         {
             proceedButton.onClick.AddListener(OnProceedButtonClicked);
-            // 시작 시 버튼 숨기기
             proceedButton.gameObject.SetActive(false);
         }
     }
 
-    /// <summary>
-    /// 진행 버튼이 클릭되면 이벤트를 발생시키고, UI를 정리합니다.
-    /// </summary>
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            if (proceedButton != null && proceedButton.gameObject.activeInHierarchy)
+            {
+                OnProceedButtonClicked();
+            }
+            else if (GameManager.Instance != null &&
+                GameManager.Instance.currentPhase == GameManager.BattlePhase.PlayerTurn_CardSelection)
+            {
+                if (CardManager.instance != null)
+                {
+                    CardManager.instance.PerformMulligan();
+                }
+            }
+        }
+
+        UpdateDeckUI();
+    }
+
+    private void HandleCardManagerReady()
+    {
+        if (_isDeckUIInitialized) return;
+        StartCoroutine(InitializeDeckUICoroutine());
+    }
+
+    private IEnumerator InitializeDeckUICoroutine()
+    {
+        yield return new WaitForEndOfFrame();
+
+        if (CardManager.instance != null)
+        {
+            _initialDeckSize = CardManager.instance.GetTotalCardsCount();
+            if (_initialDeckSize == 0) _initialDeckSize = 1;
+        }
+
+        if (deckImage != null)
+        {
+            _initialDeckImageHeight = deckImage.rectTransform.sizeDelta.y;
+        }
+
+        _isDeckUIInitialized = true;
+        Debug.Log($"[BattleUIManager] 덱 UI 초기화 완료. 시작 덱 크기: {_initialDeckSize}, 이미지 높이: {_initialDeckImageHeight}");
+    }
+
+    private void UpdateDeckUI()
+    {
+        if (!_isDeckUIInitialized || CardManager.instance == null || deckCountText == null || deckImage == null)
+        {
+            return;
+        }
+
+        int currentDeckCount = CardManager.instance.DeckCount;
+        deckCountText.text = currentDeckCount.ToString();
+
+        float currentRatio = (float)currentDeckCount / _initialDeckSize;
+        float targetHeight = Mathf.Lerp(_initialDeckImageHeight * deckImageMinHeightRatio, _initialDeckImageHeight, currentRatio);
+        deckImage.rectTransform.sizeDelta = new Vector2(deckImage.rectTransform.sizeDelta.x, targetHeight);
+    }
+
     private void OnProceedButtonClicked()
     {
-        // 핸드 패널을 감추는 로직 추가
         if (handPanel != null)
         {
             handPanel.SetActive(false);
-            Debug.Log("[BattleUIManager] 핸드 패널을 비활성화합니다.");
         }
-
-        // 진행 버튼도 숨기기
         if (proceedButton != null)
         {
             proceedButton.gameObject.SetActive(false);
         }
-
         if (BattleEventManager.instance != null)
         {
             BattleEventManager.instance.RaiseActionPhaseStart();
@@ -88,27 +148,19 @@ public class BattleUIManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// 진행 버튼을 표시합니다.
-    /// </summary>
     public void ShowProceedButton()
     {
         if (proceedButton != null)
         {
             proceedButton.gameObject.SetActive(true);
-            Debug.Log("[BattleUIManager] 진행 버튼을 표시합니다.");
         }
     }
 
-    /// <summary>
-    /// 진행 버튼을 숨깁니다.
-    /// </summary>
     public void HideProceedButton()
     {
         if (proceedButton != null)
         {
             proceedButton.gameObject.SetActive(false);
-            Debug.Log("[BattleUIManager] 진행 버튼을 숨깁니다.");
         }
     }
 }

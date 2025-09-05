@@ -24,7 +24,8 @@ public class CardManager : MonoBehaviour
     private List<CardDataSO> _playerDeck;
     private List<CardDataSO> _discardPile;
     private List<CardDataSO> _currentHand;
-
+    public int DeckCount => _playerDeck?.Count ?? 0;
+    public int DiscardPileCount => _discardPile?.Count ?? 0;
     private int _handSize;
     private int _mulligansPerTurn;
     private int _maxActionsPerTurn;

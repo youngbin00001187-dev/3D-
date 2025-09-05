@@ -109,16 +109,19 @@ public class ActionTurnManager : MonoBehaviour
     {
         _isProcessingQueue = true;
 
-        // 두 큐 중 하나라도 액션이 남아있는 동안 계속 루프를 돕니다.
         while (_normalQueue.Count > 0 || _interruptQueue.Count > 0)
         {
-            // 매 루프 시작 시, 인터럽트 큐를 최우선으로 확인하고 처리합니다.
+            // --- 수정안 1: 인터럽트 -> 통상 전환 딜레이 ---
             if (_interruptQueue.Count > 0)
             {
                 yield return StartCoroutine(ProcessInterruptQueue());
+
+                if (_normalQueue.Count > 0)
+                {
+                    yield return new WaitForSeconds(interruptActionDelay);
+                }
             }
 
-            // 인터럽트 큐가 비어있고, 통상 큐에 액션이 있다면 하나를 처리합니다.
             if (_normalQueue.Count > 0)
             {
                 QueuedAction action = _normalQueue.Dequeue();
@@ -140,9 +143,10 @@ public class ActionTurnManager : MonoBehaviour
                     if (animator != null) animator.SetInteger("motionID", 0);
                 }
 
-                // 후딜은 통상 액션이 끝난 직후에만 적용됩니다.
-                // 다음 행동이 인터럽트일 경우, 후딜 없이 즉시 반응해야 합니다.
-                if (_normalQueue.Count > 0 && _interruptQueue.Count == 0)
+                // --- 수정안 2: 통상 -> 인터럽트 전환 딜레이 (사용자님 지적 사항 반영) ---
+                // 다음 행동이 인터럽트라도 최소한의 후딜레이를 보장하기 위해
+                // _interruptQueue.Count == 0 조건을 제거합니다.
+                if (_normalQueue.Count > 0)
                 {
                     yield return new WaitForSeconds(normalActionDelay);
                 }
@@ -152,7 +156,6 @@ public class ActionTurnManager : MonoBehaviour
         _isProcessingQueue = false;
         Debug.Log("<color=magenta>[ActionTurnManager] 모든 액션 큐 처리 완료.</color>");
     }
-
     public void AddActionToNormalQueue(QueuedAction action)
     {
         _normalQueue.Enqueue(action);

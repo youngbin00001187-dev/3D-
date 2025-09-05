@@ -65,6 +65,9 @@ public class EnemyController : UnitController
     /// <summary>
     /// [표시/재계산 함수] 현재 계획과 현재 위치를 바탕으로 의도 하이라이트를 그립니다.
     /// </summary>
+    /// <summary>
+    /// [표시/재계산 함수] 현재 계획과 현재 위치를 바탕으로 의도 하이라이트를 그립니다.
+    /// </summary>
     public void UpdateIntentDisplay()
     {
         if (HighlightManager.instance == null) return;
@@ -73,25 +76,49 @@ public class EnemyController : UnitController
 
         if (_plannedCard == null) return;
 
+        // 1. 적의 현재 위치와 계획된 상대 방향을 바탕으로 최종 조준 타겟 좌표를 계산합니다.
         Vector3Int finalTargetPos = GetGridPosition() + _plannedRelativeVector;
-        GameObject finalTargetTile = GridManager3D.instance.GetTileAtPosition(finalTargetPos);
 
-        if (finalTargetTile == null) return;
+        // 2. CardDataSO에 정의된 'intentPredictionRange'를 가져옵니다.
+        List<Vector3Int> intentVectors = _plannedCard.intentPredictionRange;
+        if (intentVectors == null || intentVectors.Count == 0) return;
 
-        GameAction gameAction = _plannedCard.actionSequence[0];
-        var impactTiles = gameAction.GetActionImpactTiles(this, finalTargetTile)
-                                     .Select(t => t.GetComponent<Tile3D>())
-                                     .Where(t => t != null).ToList();
+        List<Tile3D> intentTiles = new List<Tile3D>();
 
-        HighlightManager.instance.AddHighlight(impactTiles, HighlightManager.HighlightType.EnemyIntent);
-        _currentIntentTiles = impactTiles;
+        // 3. 공격 방향을 계산합니다.
+        Vector3Int attackDirection = _plannedRelativeVector;
+        if (attackDirection == Vector3Int.zero)
+        {
+            attackDirection = Vector3Int.forward;
+        }
+
+        // 4. 각 'intent' 벡터를 공격 방향에 맞춰 회전시키고, 실제 타일 위치를 계산합니다.
+        foreach (var vector in intentVectors)
+        {
+            Vector3Int rotatedVector = RotateVector(vector, attackDirection);
+
+            // ▼▼▼ [수정] 바로 이 부분입니다! 기준점을 적의 위치가 아닌 최종 목표 지점으로 변경 ▼▼▼
+            Vector3Int finalTilePos = finalTargetPos + rotatedVector;
+
+            GameObject tileObject = GridManager3D.instance.GetTileAtPosition(finalTilePos);
+            if (tileObject != null)
+            {
+                Tile3D tile = tileObject.GetComponent<Tile3D>();
+                if (tile != null)
+                {
+                    intentTiles.Add(tile);
+                }
+            }
+        }
+
+        // 5. 계산된 의도 타일에 하이라이트를 추가합니다.
+        HighlightManager.instance.AddHighlight(intentTiles, HighlightManager.HighlightType.EnemyIntent);
+        _currentIntentTiles = intentTiles;
     }
     public void ReplanActionFromNewPosition()
     {
         Debug.Log($"<color=orange>[AI] {this.name}이(가) 넉백으로 인해 행동을 재조정합니다.</color>");
 
-        // 1. 현재 위치에서 가장 최적인 다음 행동을 다시 계획합니다.
-        PlanNextAction();
         // 2. 새로운 계획에 맞춰 의도 표시를 업데이트합니다.
         UpdateIntentDisplay();
     }
@@ -106,7 +133,24 @@ public class EnemyController : UnitController
             _currentIntentTiles.Clear();
         }
     }
+    private Vector3Int RotateVector(Vector3Int vector, Vector3Int direction)
+    {
+        float angle = Mathf.Atan2(direction.z, direction.x) * Mathf.Rad2Deg;
+        int snappedAngle = Mathf.RoundToInt(angle / 45f) * 45;
 
+        switch (snappedAngle)
+        {
+            case 0: return new Vector3Int(vector.z, 0, -vector.x);
+            case 45: return new Vector3Int(vector.x + vector.z, 0, vector.z - vector.x);
+            case 90: return vector;
+            case 135: return new Vector3Int(vector.x - vector.z, 0, vector.x + vector.z);
+            case 180: case -180: return new Vector3Int(-vector.z, 0, vector.x);
+            case -135: return new Vector3Int(-vector.x - vector.z, 0, -vector.z + vector.x);
+            case -90: return new Vector3Int(-vector.x, 0, -vector.z);
+            case -45: return new Vector3Int(-vector.x + vector.z, 0, -vector.x - vector.z);
+            default: return vector;
+        }
+    }
     /// <summary>
     /// 계획된 행동을 ActionTurnManager 큐에 등록합니다.
     /// </summary>

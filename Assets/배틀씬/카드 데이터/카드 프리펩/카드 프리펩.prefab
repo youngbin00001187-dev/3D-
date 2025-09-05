@@ -203,6 +203,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   nameText: {fileID: 3779085776998282855}
   artImage: {fileID: 3580585772482194009}
+  detailViewHoverDelay: 0.5
+  hideDelay: 0.1
 --- !u!1 &8452340929076096447
 GameObject:
   m_ObjectHideFlags: 0
