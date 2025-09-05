@@ -10,6 +10,8 @@ using DG.Tweening;
 /// </summary>
 public class CardManager : MonoBehaviour
 {
+    #region 변수 및 인스턴스
+
     public static CardManager instance;
 
     [Header("UI 연결")]
@@ -28,7 +30,6 @@ public class CardManager : MonoBehaviour
     private int _maxActionsPerTurn;
     private int _remainingMulligans;
 
-    // 현재 타겟팅 중인 카드
     private CardDataSO _targetingCard;
     private GameObject _targetingCardUIObject;
     private Tile3D _lastHoveredTileForPreview;
@@ -37,6 +38,25 @@ public class CardManager : MonoBehaviour
     private List<Tile3D> _currentPreviewTiles = new List<Tile3D>();
     private bool _isPreviewSuppressedByHover = false;
     private Dictionary<GameObject, CardDataSO> _selectedCards = new Dictionary<GameObject, CardDataSO>();
+
+    [Header("애니메이션 관련")]
+    [Tooltip("애니메이션 중인 카드가 임시로 소속될 최상위 캔버스 RectTransform")]
+    public RectTransform mainCanvasTransform;
+    public Transform discardPileTransform;
+    [Tooltip("카드 이동의 시작점이 될 덱(Deck)의 Transform")]
+    public Transform deckDrawTransform;
+    [Tooltip("액션/핸드 패널의 공간을 미리 차지할 투명한 자리 표시자 UI 프리팹")]
+    public GameObject placeholderPrefab;
+    [Tooltip("카드가 목표지점까지 날아가는 시간")]
+    public float cardMoveDuration = 0.3f;
+    [Tooltip("카드 드로우 시 각 카드의 애니메이션 사이 딜레이")]
+    public float cardDrawDelay = 0.1f;
+    [Tooltip("레이캐스트를 실행할 카메라를 지정합니다.")]
+    public Camera raycastCamera;
+
+    #endregion
+
+    #region Unity 생명주기 및 초기화
 
     void Awake()
     {
@@ -73,67 +93,6 @@ public class CardManager : MonoBehaviour
         }
     }
 
-    void Update()
-    {
-        // 상태 1: 핸드의 다른 카드를 호버하고 있을 때 (_isPreviewSuppressedByHover == true)
-        // 이 경우, Update 메서드는 아무것도 하지 않고 즉시 종료하여 HandleCardHoverEnter가 그린 미리보기를 보존합니다.
-        if (_isPreviewSuppressedByHover)
-        {
-            return;
-        }
-
-        // 상태 2: 타겟팅 중인 카드가 없을 때
-        if (_targetingCard == null)
-        {
-            // 남아있을 수 있는 모든 관련 미리보기를 깨끗하게 지웁니다.
-            if (_highlightManager != null)
-            {
-                _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerPreview);
-                _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerTarget);
-            }
-            _lastHoveredTileForPreview = null;
-            return;
-        }
-
-        // --- 상태 3: 타겟팅 카드가 있고, 다른 카드를 호버하고 있지 않을 때 ---
-
-        // 3-1. 항상 기본 사거리(PlayerPreview)를 표시합니다.
-        UpdateTargetingAura(_targetingCard);
-
-        // 3-2. 실시간 AOE 미리보기(PlayerTarget) 로직을 처리합니다.
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        RaycastHit hit;
-        Tile3D currentHoveredTile = null;
-
-        if (Physics.Raycast(ray, out hit, 200f))
-        {
-            currentHoveredTile = hit.collider.GetComponent<Tile3D>();
-        }
-
-        if (currentHoveredTile != _lastHoveredTileForPreview)
-        {
-            // 이전에 표시했던 PlayerTarget 하이라이트는 무조건 지웁니다.
-            _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerTarget);
-
-            // 마우스가 유효한 타일 위에 있다면 PlayerTarget 하이라이트를 "추가"합니다.
-            if (currentHoveredTile != null && _currentPreviewTiles.Contains(currentHoveredTile))
-            {
-                GameAction firstAction = _targetingCard.actionSequence[0];
-                var impactTiles = firstAction.GetActionImpactTiles(playerController, currentHoveredTile.gameObject)
-                                             .Select(t => t.GetComponent<Tile3D>())
-                                             .Where(t => t != null).ToList();
-                _highlightManager.AddHighlight(impactTiles, HighlightManager.HighlightType.PlayerTarget);
-            }
-            _lastHoveredTileForPreview = currentHoveredTile;
-        }
-
-        // 3-3. 클릭 처리는 액션 페이즈일 때만 작동합니다.
-        if (GameManager.Instance != null && GameManager.Instance.currentPhase == GameManager.BattlePhase.ActionPhase)
-        {
-            HandleMouseClick();
-        }
-    }
-
     public void Initialize(List<CardDataSO> deck, int handSize, int mulligans, int maxActions)
     {
         _handSize = handSize;
@@ -146,23 +105,161 @@ public class CardManager : MonoBehaviour
         _selectedCards.Clear();
         ClearTargetingCard();
         ShuffleDeck();
-
-        // [신규] 모든 초기화가 끝났음을 이벤트 매니저에 알립니다.
         if (BattleEventManager.instance != null)
         {
             BattleEventManager.instance.RaiseCardManagerReady();
         }
     }
 
-    #region 드로우 및 멀리건
+    #endregion
+
+    #region 메인 업데이트 루프
+
+    void Update()
+    {
+        if (_isPreviewSuppressedByHover) return;
+        if (_targetingCard == null)
+        {
+            if (_highlightManager != null)
+            {
+                _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerPreview);
+                _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerTarget);
+            }
+            _lastHoveredTileForPreview = null;
+            return;
+        }
+
+        UpdateTargetingAura(_targetingCard);
+
+        if (raycastCamera == null) return;
+        Ray ray = raycastCamera.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+        Tile3D currentHoveredTile = null;
+        if (Physics.Raycast(ray, out hit, 200f))
+        {
+            currentHoveredTile = hit.collider.GetComponent<Tile3D>();
+        }
+
+        if (currentHoveredTile != _lastHoveredTileForPreview)
+        {
+            _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerTarget);
+            if (currentHoveredTile != null && _currentPreviewTiles.Contains(currentHoveredTile))
+            {
+                GameAction impactAction = _targetingCard.actionSequence.LastOrDefault(a => a is AttackAction);
+                if (impactAction == null && _targetingCard.actionSequence.Count > 0)
+                {
+                    impactAction = _targetingCard.actionSequence[0];
+                }
+                if (impactAction != null)
+                {
+                    var impactTiles = impactAction.GetActionImpactTiles(playerController, currentHoveredTile.gameObject)
+                                                   .Select(t => t.GetComponent<Tile3D>())
+                                                   .Where(t => t != null).ToList();
+                    _highlightManager.AddHighlight(impactTiles, HighlightManager.HighlightType.PlayerTarget);
+                }
+            }
+            _lastHoveredTileForPreview = currentHoveredTile;
+        }
+        if (GameManager.Instance != null && GameManager.Instance.currentPhase == GameManager.BattlePhase.ActionPhase)
+        {
+            HandleMouseClick();
+        }
+    }
+
+    #endregion
+
+    #region 공통 카드 애니메이션
+
+    /// <summary>
+    /// 카드를 지정된 목적지로 애니메이션과 함께 이동시킵니다.
+    /// </summary>
+    private IEnumerator MoveCardWithPlaceholder(GameObject cardObject, Transform targetParent, System.Action onComplete = null)
+    {
+        GameObject placeholder = Instantiate(placeholderPrefab, targetParent);
+        placeholder.transform.SetAsLastSibling();
+
+        yield return new WaitForEndOfFrame();
+        Vector3 targetPosition = placeholder.transform.position;
+
+        cardObject.transform.SetParent(mainCanvasTransform, true);
+
+        cardObject.transform.DOMove(targetPosition, cardMoveDuration)
+            .SetEase(Ease.OutQuad)
+            .OnComplete(() => {
+                cardObject.transform.SetParent(targetParent, false);
+                cardObject.transform.SetSiblingIndex(placeholder.transform.GetSiblingIndex());
+                Destroy(placeholder);
+                onComplete?.Invoke();
+            });
+    }
+
+    /// <summary>
+    /// 여러 카드를 동시에 지정된 위치로 날려보냅니다 (멀리건 등에 사용).
+    /// </summary>
+    private IEnumerator MoveMultipleCardsToPosition(List<GameObject> cards, Transform targetTransform, bool destroyAfter = false)
+    {
+        if (cards.Count == 0) yield break;
+
+        Sequence moveSequence = DOTween.Sequence();
+
+        foreach (GameObject card in cards)
+        {
+            card.transform.SetParent(mainCanvasTransform, true);
+            moveSequence.Join(card.transform.DOMove(targetTransform.position, cardMoveDuration).SetEase(Ease.InQuad));
+
+            if (destroyAfter)
+            {
+                moveSequence.Join(card.transform.DOScale(Vector3.zero, cardMoveDuration));
+            }
+        }
+
+        yield return moveSequence.WaitForCompletion();
+
+        if (destroyAfter)
+        {
+            foreach (GameObject card in cards)
+            {
+                Destroy(card);
+            }
+        }
+    }
+
+    /// <summary>
+    /// 덱에서 핸드로 카드를 뽑는 애니메이션을 실행합니다.
+    /// </summary>
+    private IEnumerator DrawSingleCardAnimated(CardDataSO cardData)
+    {
+        GameObject placeholder = Instantiate(placeholderPrefab, handPanelTransform);
+
+        yield return new WaitForEndOfFrame();
+        Vector3 targetPosition = placeholder.transform.position;
+
+        GameObject newCardUI = Instantiate(cardUIPrefab, deckDrawTransform.position, Quaternion.identity, mainCanvasTransform);
+        CardUI cardComponent = newCardUI.GetComponent<CardUI>();
+        if (cardComponent != null)
+        {
+            cardComponent.Setup(cardData, this);
+        }
+
+        newCardUI.transform.DOMove(targetPosition, cardMoveDuration)
+            .SetEase(Ease.OutQuad)
+            .OnComplete(() =>
+            {
+                newCardUI.transform.SetParent(handPanelTransform, false);
+                newCardUI.transform.SetSiblingIndex(placeholder.transform.GetSiblingIndex());
+                Destroy(placeholder);
+            });
+    }
+
+    #endregion
+
+    #region 카드 드로우 및 멀리건
 
     public void DrawHand()
     {
-        // UI 정리
         foreach (Transform child in handPanelTransform) { Destroy(child.gameObject); }
         foreach (Transform child in actionPanelTransform) { Destroy(child.gameObject); }
 
-        // 현재 핸드와 선택된 카드들을 버린 카드 더미로 이동
         _discardPile.AddRange(_currentHand);
         _discardPile.AddRange(_selectedCards.Values);
         _currentHand.Clear();
@@ -172,8 +269,7 @@ public class CardManager : MonoBehaviour
         CheckAndUpdateProceedButton();
         _remainingMulligans = _mulligansPerTurn;
 
-        // 새로운 핸드 뽑기
-        DrawCards(_handSize);
+        StartCoroutine(DrawCardsAnimated(_handSize));
 
         if (BattleUIManager.instance != null) { BattleUIManager.instance.ShowHandPanel(); }
     }
@@ -191,58 +287,113 @@ public class CardManager : MonoBehaviour
             return;
         }
 
+        StartCoroutine(PerformMulliganAnimated());
+    }
+
+    private IEnumerator PerformMulliganAnimated()
+    {
         _remainingMulligans--;
         Debug.Log($"<color=orange>[Mulligan] 멀리건을 실행합니다. 남은 횟수: {_remainingMulligans}</color>");
 
-        // [수정] 핸드에 카드가 0장이어도 상관없이 진행합니다.
-        // 핸드에 남아있는 카드를 모두 버립니다.
         _discardPile.AddRange(_currentHand);
-        Debug.Log($"[Mulligan] 핸드에 있던 {_currentHand.Count}장의 카드를 버렸습니다.");
         _currentHand.Clear();
 
-        // 핸드 패널의 UI를 모두 제거합니다.
-        foreach (Transform cardUI in handPanelTransform)
+        List<GameObject> cardsToDiscard = new List<GameObject>();
+        foreach (Transform cardTransform in handPanelTransform)
         {
-            Destroy(cardUI.gameObject);
+            cardsToDiscard.Add(cardTransform.gameObject);
         }
 
-        // 무조건 핸드 사이즈만큼 새로 드로우합니다.
-        DrawCards(_handSize);
+        yield return StartCoroutine(MoveMultipleCardsToPosition(cardsToDiscard, discardPileTransform, destroyAfter: true));
+        yield return StartCoroutine(DrawCardsAnimated(_handSize));
     }
 
-    private void DrawCards(int amount)
+    private IEnumerator DrawCardsAnimated(int amount)
     {
         Debug.Log($"[Draw] {amount}장의 카드를 새로 뽑습니다.");
-        int actualDrawnCount = 0;
 
         for (int i = 0; i < amount; i++)
         {
-            // 덱이 비어있으면 버린 카드 더미를 섞어서 덱으로 만들기
             if (_playerDeck.Count == 0)
             {
                 ReshuffleDiscardPile();
             }
-
-            // 그래도 덱이 비어있다면 (모든 카드를 다 뽑은 상황) 중단
             if (_playerDeck.Count == 0)
             {
-                Debug.LogWarning($"[Draw] 덱과 버린 더미에 더 이상 뽑을 카드가 없습니다. {actualDrawnCount}/{amount}장만 뽑았습니다.");
+                Debug.LogWarning($"[Draw] 덱과 버린 더미에 더 이상 뽑을 카드가 없습니다.");
                 break;
             }
 
             CardDataSO drawnCard = _playerDeck[0];
             _playerDeck.RemoveAt(0);
             _currentHand.Add(drawnCard);
-            InstantiateCardUI(drawnCard);
-            actualDrawnCount++;
-        }
 
-        Debug.Log($"[Draw] 실제로 {actualDrawnCount}장의 카드를 뽑았습니다. 현재 핸드: {_currentHand.Count}장");
+            yield return StartCoroutine(DrawSingleCardAnimated(drawnCard));
+            yield return new WaitForSeconds(cardDrawDelay);
+        }
     }
 
     #endregion
 
-    #region 기존 카드 관리 함수
+    #region 카드 상호작용 및 타겟팅
+
+    public void OnCardClicked(GameObject cardObject, CardDataSO cardData)
+    {
+        if (GameManager.Instance.currentPhase == GameManager.BattlePhase.PlayerTurn_CardSelection)
+        {
+            if (cardObject.transform.parent == handPanelTransform)
+            {
+                if (actionPanelTransform.childCount < _maxActionsPerTurn)
+                {
+                    StartCoroutine(MoveCardToActionPanelAnimated(cardObject, cardData));
+                }
+            }
+            else if (cardObject.transform.parent == actionPanelTransform)
+            {
+                StartCoroutine(MoveCardToHandPanelAnimated(cardObject, cardData));
+            }
+        }
+        else if (GameManager.Instance.currentPhase == GameManager.BattlePhase.ActionPhase)
+        {
+            if (cardObject.transform.parent == actionPanelTransform && cardObject != _targetingCardUIObject)
+            {
+                Debug.Log($"[CardManager] 행동 순서 변경: '{cardData.cardName}' 카드를 우선 타겟팅합니다.");
+                cardObject.transform.SetAsFirstSibling();
+                UpdateTargetingCard();
+            }
+        }
+    }
+
+    public void HandleCardHoverEnter(CardDataSO cardData)
+    {
+        if (cardData == null) return;
+        _isPreviewSuppressedByHover = true;
+        UpdateTargetingAura(cardData);
+    }
+
+    public void HandleCardHoverExit()
+    {
+        _isPreviewSuppressedByHover = false;
+    }
+
+    private void HandleMouseClick()
+    {
+        if (_targetingCard == null) return;
+        if (Input.GetMouseButtonDown(0))
+        {
+            if (raycastCamera == null) return;
+            Ray ray = raycastCamera.ScreenPointToRay(Input.mousePosition);
+            RaycastHit hit;
+            if (Physics.Raycast(ray, out hit, 200f))
+            {
+                Tile3D clickedTile = hit.collider.GetComponent<Tile3D>();
+                if (clickedTile != null)
+                {
+                    StartCoroutine(CommitTargetCoroutine(clickedTile.gameObject));
+                }
+            }
+        }
+    }
 
     private void UpdateTargetingAura(CardDataSO cardData)
     {
@@ -259,49 +410,6 @@ public class CardManager : MonoBehaviour
             }
             _currentPreviewTiles = targetableTiles.Select(t => t.GetComponent<Tile3D>()).Where(t => t != null).ToList();
             _highlightManager.AddHighlight(_currentPreviewTiles, HighlightManager.HighlightType.PlayerPreview);
-        }
-    }
-
-    private void HandleMouseClick()
-    {
-        if (_targetingCard == null) return;
-        if (Input.GetMouseButtonDown(0))
-        {
-            Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-            RaycastHit hit;
-            if (Physics.Raycast(ray, out hit, 200f))
-            {
-                Tile3D clickedTile = hit.collider.GetComponent<Tile3D>();
-                if (clickedTile != null)
-                {
-                    StartCoroutine(CommitTargetCoroutine(clickedTile.gameObject));
-                }
-            }
-        }
-    }
-
-    public void OnCardClicked(GameObject cardObject, CardDataSO cardData)
-    {
-        if (GameManager.Instance.currentPhase == GameManager.BattlePhase.PlayerTurn_CardSelection)
-        {
-            if (cardObject.transform.parent == handPanelTransform)
-            {
-                if (actionPanelTransform.childCount >= _maxActionsPerTurn) return;
-                MoveCardToActionPanel(cardObject, cardData);
-            }
-            else if (cardObject.transform.parent == actionPanelTransform)
-            {
-                MoveCardToHandPanel(cardObject, cardData);
-            }
-        }
-        else if (GameManager.Instance.currentPhase == GameManager.BattlePhase.ActionPhase)
-        {
-            if (cardObject.transform.parent == actionPanelTransform && cardObject != _targetingCardUIObject)
-            {
-                Debug.Log($"[CardManager] 행동 순서 변경: '{cardData.cardName}' 카드를 우선 타겟팅합니다.");
-                cardObject.transform.SetAsFirstSibling();
-                UpdateTargetingCard();
-            }
         }
     }
 
@@ -335,33 +443,14 @@ public class CardManager : MonoBehaviour
         }
     }
 
-    public void HandleCardHoverEnter(CardDataSO cardData)
-    {
-        if (cardData == null) return;
-        _isPreviewSuppressedByHover = true;
-        UpdateTargetingAura(cardData);
-    }
-
-    public void HandleCardHoverExit()
-    {
-        _isPreviewSuppressedByHover = false;
-    }
-
     private IEnumerator CommitTargetCoroutine(GameObject targetTile)
     {
         if (_targetingCard == null || _targetingCardUIObject == null) yield break;
         Tile3D clickedTile3D = targetTile.GetComponent<Tile3D>();
         if (clickedTile3D == null || !_currentPreviewTiles.Contains(clickedTile3D)) yield break;
 
-        // [추가] ClearTargetingCard()가 호출되기 전에 카드 데이터를 미리 저장합니다.
         CardDataSO cardToUse = _targetingCard;
-
-        QueuedAction newAction = new QueuedAction
-        {
-            User = playerController,
-            SourceCard = cardToUse, // 저장해둔 데이터를 사용합니다.
-            TargetTile = targetTile
-        };
+        QueuedAction newAction = new QueuedAction { User = playerController, SourceCard = cardToUse, TargetTile = targetTile };
 
         if (ActionTurnManager.Instance.IsProcessingQueue)
         {
@@ -369,10 +458,7 @@ public class CardManager : MonoBehaviour
             {
                 playerController.UseBreak();
                 ActionTurnManager.Instance.AddActionToInterruptQueue(newAction);
-
-                // [추가] 사용한 카드를 버린 카드 더미에 추가합니다.
                 _discardPile.Add(cardToUse);
-
                 GameObject cardToDestroy = _targetingCardUIObject;
                 _selectedCards.Remove(cardToDestroy);
                 ClearTargetingCard();
@@ -389,10 +475,7 @@ public class CardManager : MonoBehaviour
         else
         {
             ActionTurnManager.Instance.AddActionToNormalQueue(newAction);
-
-            // [추가] 사용한 카드를 버린 카드 더미에 추가합니다.
             _discardPile.Add(cardToUse);
-
             GameObject cardToDestroy = _targetingCardUIObject;
             _selectedCards.Remove(cardToDestroy);
             ClearTargetingCard();
@@ -406,14 +489,35 @@ public class CardManager : MonoBehaviour
         }
     }
 
-    public int GetActionCardCount()
+    #endregion
+
+    #region 카드 이동 및 상태 관리
+
+    private IEnumerator MoveCardToActionPanelAnimated(GameObject cardObject, CardDataSO cardData)
     {
-        return actionPanelTransform.childCount;
+        _currentHand.Remove(cardData);
+        _selectedCards.Add(cardObject, cardData);
+
+        yield return StartCoroutine(MoveCardWithPlaceholder(cardObject, actionPanelTransform, () => {
+            CheckAndUpdateProceedButton();
+            UpdateTargetingCard();
+        }));
+    }
+
+    private IEnumerator MoveCardToHandPanelAnimated(GameObject cardObject, CardDataSO cardData)
+    {
+        _selectedCards.Remove(cardObject);
+        _currentHand.Add(cardData);
+
+        yield return StartCoroutine(MoveCardWithPlaceholder(cardObject, handPanelTransform, () => {
+            CheckAndUpdateProceedButton();
+            UpdateTargetingCard();
+        }));
     }
 
     private void CheckAndUpdateProceedButton()
     {
-        bool shouldShow = actionPanelTransform.childCount >= _maxActionsPerTurn;
+        bool shouldShow = _selectedCards.Count >= _maxActionsPerTurn;
         if (BattleUIManager.instance != null)
         {
             if (shouldShow) BattleUIManager.instance.ShowProceedButton();
@@ -421,23 +525,14 @@ public class CardManager : MonoBehaviour
         }
     }
 
-    private void MoveCardToActionPanel(GameObject cardObject, CardDataSO cardData)
+    public void OnActionPhaseStart()
     {
-        cardObject.transform.SetParent(actionPanelTransform, false);
-        _currentHand.Remove(cardData);
-        _selectedCards.Add(cardObject, cardData);
-        CheckAndUpdateProceedButton();
         UpdateTargetingCard();
     }
 
-    private void MoveCardToHandPanel(GameObject cardObject, CardDataSO cardData)
-    {
-        cardObject.transform.SetParent(handPanelTransform, false);
-        _currentHand.Add(cardData);
-        _selectedCards.Remove(cardObject);
-        CheckAndUpdateProceedButton();
-        UpdateTargetingCard();
-    }
+    #endregion
+
+    #region 덱 및 버린 카드 관리
 
     private void ShuffleDeck()
     {
@@ -466,33 +561,19 @@ public class CardManager : MonoBehaviour
         }
     }
 
-    private void InstantiateCardUI(CardDataSO data)
-    {
-        if (cardUIPrefab != null && handPanelTransform != null)
-        {
-            GameObject newCardUI = Instantiate(cardUIPrefab, handPanelTransform);
-            CardUI cardComponent = newCardUI.GetComponent<CardUI>();
-            if (cardComponent != null)
-            {
-                cardComponent.Setup(data, this);
-            }
-        }
-    }
-
-    public void OnActionPhaseStart()
-    {
-        UpdateTargetingCard();
-    }
-
     #endregion
 
-    #region 디버그 및 상태 확인용 함수
+    #region 디버그 및 상태 확인용
+
+    public int GetActionCardCount()
+    {
+        return actionPanelTransform.childCount;
+    }
 
     public void LogCurrentState()
     {
         Debug.Log($"[CardManager State] 덱: {_playerDeck.Count}장, 핸드: {_currentHand.Count}장, 버린 더미: {_discardPile.Count}장, 액션: {_selectedCards.Count}장");
     }
-
     public int GetTotalCardsCount()
     {
         return _playerDeck.Count + _currentHand.Count + _discardPile.Count + _selectedCards.Count;

@@ -12,11 +12,9 @@ public class UnitSpawner : MonoBehaviour
     [Tooltip("플레이어로 사용할 프리펩입니다.")]
     public GameObject playerPrefab;
 
-    // ▼▼▼ 여기에 CardManager 참조를 추가했습니다 ▼▼▼
     [Header("매니저 연결")]
     [Tooltip("플레이어 정보를 전달할 CardManager입니다.")]
     public CardManager cardManager;
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
 
     [Header("위치 설정")]
     [Tooltip("플레이어가 생성될 그리드 좌표입니다.")]
@@ -75,14 +73,19 @@ public class UnitSpawner : MonoBehaviour
             PlayerController playerController = newPlayerObject.GetComponent<PlayerController>();
             if (playerController != null)
             {
+                // [수정] BattleInitializer로부터 플레이어 능력치를 받아와 설정합니다.
+                if (BattleInitializer.instance != null)
+                {
+                    playerController.maxHealth = BattleInitializer.instance.playerMaxHealth;
+                    playerController.currentHealth = BattleInitializer.instance.playerCurrentHealth;
+                    Debug.Log($"<color=cyan>[UnitSpawner] 플레이어 체력 설정 완료: {playerController.currentHealth}/{playerController.maxHealth}</color>");
+                }
+
                 playerController.currentTile = tile;
                 GridManager3D.instance.RegisterUnitPosition(playerController, playerStartPosition);
 
-                // ▼▼▼ 이 부분이 핵심입니다 ▼▼▼
-                // 1. CardManager가 연결되어 있는지 확인합니다.
                 if (cardManager != null)
                 {
-                    // 2. CardManager의 playerController 변수에, 방금 생성한 플레이어를 연결해줍니다.
                     cardManager.playerController = playerController;
                     Debug.Log($"<color=green>CardManager에 생성된 플레이어({playerController.name})를 연결했습니다.</color>");
                 }
@@ -90,7 +93,6 @@ public class UnitSpawner : MonoBehaviour
                 {
                     Debug.LogWarning("[UnitSpawner] CardManager가 연결되지 않아 플레이어 정보를 전달할 수 없습니다.");
                 }
-                // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
             }
 
             newPlayerObject.transform.DOMove(endPosition, dropDuration).SetEase(Ease.OutBounce);
@@ -103,7 +105,9 @@ public class UnitSpawner : MonoBehaviour
         {
             if (i >= enemyStartPositions.Count) break;
 
-            GameObject enemyPrefab = enemiesToSpawn[i].enemyPrefab;
+            // [수정] 현재 생성할 적의 데이터를 변수에 저장합니다.
+            EnemyDataSO enemyData = enemiesToSpawn[i];
+            GameObject enemyPrefab = enemyData.enemyPrefab;
             Vector3Int spawnPos = enemyStartPositions[i];
             GameObject tile = GridManager3D.instance.GetTileAtPosition(spawnPos);
 
@@ -117,6 +121,10 @@ public class UnitSpawner : MonoBehaviour
                 EnemyController enemyController = newEnemyObject.GetComponent<EnemyController>();
                 if (enemyController != null)
                 {
+                    // [수정] 적의 데이터를 설정하는 Setup() 메서드를 호출합니다.
+                    enemyController.Setup(enemyData);
+                    Debug.Log($"<color=cyan>[UnitSpawner] {enemyData.enemyName} 생성 및 설정 완료. 체력: {enemyController.currentHealth}/{enemyController.maxHealth}</color>");
+
                     enemyController.currentTile = tile;
                     GridManager3D.instance.RegisterUnitPosition(enemyController, spawnPos);
                 }

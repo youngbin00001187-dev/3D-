@@ -77,15 +77,39 @@ public class CameraDragZoom : MonoBehaviour
         float camHeight = cam.orthographicSize;
         float camWidth = camHeight * cam.aspect;
 
-        // 맵 경계 안에서만 움직이도록 제한
-        float minX = mapMinX + camWidth;
-        float maxX = mapMaxX - camWidth;
-        float minY = mapMinY + camHeight;
-        float maxY = mapMaxY - camHeight;
+        // 맵 크기 계산
+        float mapWidth = mapMaxX - mapMinX;
+        float mapHeight = mapMaxY - mapMinY;
 
         Vector3 pos = transform.position;
-        pos.x = Mathf.Clamp(pos.x, minX, maxX);
-        pos.y = Mathf.Clamp(pos.y, minY, maxY);
+
+        // 카메라가 맵보다 큰 경우 (줌아웃이 너무 많이 된 경우)
+        if (camWidth * 2 >= mapWidth)
+        {
+            // 맵 중앙에 고정
+            pos.x = (mapMinX + mapMaxX) * 0.5f;
+        }
+        else
+        {
+            // 정상적인 경계 클램핑
+            float minX = mapMinX + camWidth;
+            float maxX = mapMaxX - camWidth;
+            pos.x = Mathf.Clamp(pos.x, minX, maxX);
+        }
+
+        if (camHeight * 2 >= mapHeight)
+        {
+            // 맵 중앙에 고정
+            pos.y = (mapMinY + mapMaxY) * 0.5f;
+        }
+        else
+        {
+            // 정상적인 경계 클램핑
+            float minY = mapMinY + camHeight;
+            float maxY = mapMaxY - camHeight;
+            pos.y = Mathf.Clamp(pos.y, minY, maxY);
+        }
+
         pos.z = baseZ;
         transform.position = pos;
     }

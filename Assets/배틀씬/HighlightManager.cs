@@ -33,7 +33,7 @@ public class HighlightManager : MonoBehaviour
     [Header("디버그 설정")]
     [Tooltip("타일이 있는 레이어를 지정해야 합니다.")]
     public LayerMask tileLayer;
-
+    public Camera raycastCamera;
     private Tile3D _lastHoveredTile;
     private Dictionary<HighlightType, Color> highlightColorMap = new Dictionary<HighlightType, Color>();
     private Dictionary<Tile3D, List<HighlightType>> highlightedTiles = new Dictionary<Tile3D, List<HighlightType>>();
@@ -52,7 +52,14 @@ public class HighlightManager : MonoBehaviour
 
     void Update()
     {
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        // 카메라가 인스펙터에 할당되지 않았으면 오류 방지를 위해 실행을 중단합니다.
+        if (raycastCamera == null)
+        {
+            return;
+        }
+
+        // 할당된 카메라를 기준으로 레이캐스트를 실행합니다.
+        Ray ray = raycastCamera.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
         Debug.DrawRay(ray.origin, ray.direction * 100f, Color.red);
         Tile3D currentHoveredTile = null;

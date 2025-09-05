@@ -14,8 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cardID: 1
   cardName: Trinity Blade II
-  cardImage: {fileID: 21300000, guid: aae961787980cf845aeb29b2aaa908cd, type: 3}
-  description: 'Trinity Blade II: Terrestrial'
+  cardImage: {fileID: 21300000, guid: 6051a84503a042b44bde23a7fdcc4489, type: 3}
+  description: 'Trinity Blade II: Terrestrial
+
+    [Attack]'
   intentPredictionRange:
   - {x: 1, y: 0, z: 1}
   - {x: -1, y: 0, z: -1}
@@ -30,7 +32,10 @@ MonoBehaviour:
       type: {class: AttackAction, ns: , asm: Assembly-CSharp}
       data:
         attachedEffects: []
-        vfxEffects: []
+        vfxEffects:
+        - vfxId: 0
+          timing: 1
+          spawnType: 0
         attackRange:
         - {x: 1, y: 0, z: 1}
         - {x: -1, y: 0, z: -1}

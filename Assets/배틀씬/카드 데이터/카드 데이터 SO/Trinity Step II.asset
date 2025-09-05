@@ -14,8 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cardID: 1
   cardName: Trinity Step II
-  cardImage: {fileID: 21300000, guid: aae961787980cf845aeb29b2aaa908cd, type: 3}
-  description: 'Trinity Step II: tera'
+  cardImage: {fileID: 21300000, guid: cab13b4b452dc1e4c9a51a08d8bbfde1, type: 3}
+  description: 'Trinity Step II: tera
+
+    [Move][Knockback]'
   intentPredictionRange:
   - {x: 1, y: 0, z: 1}
   - {x: -1, y: 0, z: 1}

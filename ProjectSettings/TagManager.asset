@@ -7,6 +7,7 @@ TagManager:
   - unit
   - tile
   - GameplayCamera
+  - Effect
   layers:
   - Default
   - TransparentFX
@@ -18,7 +19,7 @@ TagManager:
   - Backgorund
   - tile
   - unit
-  - 
+  - effect
   - 
   - 
   - 
@@ -43,6 +44,9 @@ TagManager:
   m_SortingLayers:
   - name: Default
     uniqueID: 0
+    locked: 0
+  - name: Effect
+    uniqueID: 658433299
     locked: 0
   - name: UI
     uniqueID: 2886371929

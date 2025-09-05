@@ -14,6 +14,11 @@ public class BattleInitializer : MonoBehaviour
     [HideInInspector] public int mulligansPerTurn;
     public int playerMaxActionsPerTurn;
 
+    // [추가] 플레이어 체력 정보를 저장할 변수
+    [HideInInspector] public int playerMaxHealth;
+    [HideInInspector] public int playerCurrentHealth;
+
+
     void Awake()
     {
         Debug.Log("<color=blue>[BattleInitializer] Awake 호출됨</color>");
@@ -34,11 +39,6 @@ public class BattleInitializer : MonoBehaviour
     {
         Debug.Log("<color=blue>[BattleInitializer] Start 호출됨</color>");
 
-        // [수정] CardManager 초기화 호출을 삭제합니다.
-        // 이 역할은 이제 CardManager가 OnAllUnitsPlaced 이벤트를 통해 스스로 수행합니다.
-        // InitializeCardManager();
-
-        // BattleInitializer는 그리드 생성을 시작하라는 첫 신호만 보냅니다.
         if (BattleEventManager.instance != null)
         {
             Debug.Log("<color=blue>[BattleInitializer] 그리드 설정 이벤트 발생</color>");
@@ -49,9 +49,6 @@ public class BattleInitializer : MonoBehaviour
             Debug.LogError("<color=red>[BattleInitializer] BattleEventManager를 찾을 수 없습니다!</color>");
         }
     }
-
-    // [수정] 이 함수는 이제 필요 없으므로 삭제합니다.
-    // private void InitializeCardManager() { ... }
 
     private void FetchDataFromGlobalManager()
     {
@@ -64,7 +61,12 @@ public class BattleInitializer : MonoBehaviour
             handSize = GlobalManager.instance.handSize;
             mulligansPerTurn = GlobalManager.instance.mulligansPerTurn;
             playerMaxActionsPerTurn = GlobalManager.instance.playerMaxActionsPerTurn;
-            Debug.Log($"<color=blue>[BattleInitializer] GlobalManager 데이터 로드 완료 - 덱: {playerDeck?.Count ?? 0}장</color>");
+
+            // [추가] GlobalManager로부터 플레이어 체력 정보를 가져옵니다.
+            playerMaxHealth = GlobalManager.instance.playerMaxHealth;
+            playerCurrentHealth = GlobalManager.instance.playerCurrentHealth;
+
+            Debug.Log($"<color=blue>[BattleInitializer] GlobalManager 데이터 로드 완료 - 덱: {playerDeck?.Count ?? 0}장, 체력: {playerCurrentHealth}/{playerMaxHealth}</color>");
         }
         else
         {
@@ -77,6 +79,10 @@ public class BattleInitializer : MonoBehaviour
             if (handSize == 0) handSize = 5;
             if (mulligansPerTurn == 0) mulligansPerTurn = 1;
             if (playerMaxActionsPerTurn == 0) playerMaxActionsPerTurn = 3;
+
+            // [추가] 테스트용 체력 데이터 설정
+            if (playerMaxHealth == 0) playerMaxHealth = 100;
+            if (playerCurrentHealth == 0) playerCurrentHealth = playerMaxHealth;
         }
         Debug.Log($"<color=green>[BattleInitializer] 최종 데이터 - 덱: {playerDeck?.Count ?? 0}장, 손패: {handSize}, 멀리건: {mulligansPerTurn}, 최대액션: {playerMaxActionsPerTurn}</color>");
     }
@@ -90,6 +96,7 @@ public class BattleInitializer : MonoBehaviour
                   $"Hand Size: {handSize}\n" +
                   $"Mulligans Per Turn: {mulligansPerTurn}\n" +
                   $"Max Actions: {playerMaxActionsPerTurn}\n" +
+                  $"Player Health: {playerCurrentHealth}/{playerMaxHealth}\n" +
                   $"CardManager Instance: {CardManager.instance != null}\n" +
                   $"BattleEventManager Instance: {BattleEventManager.instance != null}</color>");
     }

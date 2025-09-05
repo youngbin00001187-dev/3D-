@@ -15,6 +15,8 @@ public class AttackAction : GameAction
     [Tooltip("피격 범위입니다. (Vector3Int 사용)")]
     public List<Vector3Int> areaOfEffect;
     public int motionID = 2;
+    // ▼▼▼ [수정] 이 vfxId 필드는 더 이상 사용되지 않으며, 혼란을 막기 위해 주석 처리하거나 삭제하는 것을 권장합니다. ▼▼▼
+    // public int vfxId = 0; 
     private readonly float defaultWaitTime = 0.5f;
 
     public override List<GameObject> GetTargetableTiles(UnitController user)
@@ -52,9 +54,6 @@ public class AttackAction : GameAction
 
     protected override IEnumerator InternalExecute()
     {
-        Debug.Log($"<color=red>ACTION: {actionUser.name} starts attacking {actionTargetTile.name}.</color>");
-
-        // --- 1. 액션 시작 시점 ---
         ExecuteVFXByTiming(EffectTiming.OnActionStart);
         yield return ExecuteEffectsByTiming(EffectTiming.OnActionStart);
 
@@ -65,67 +64,47 @@ public class AttackAction : GameAction
             yield return new WaitForSeconds(defaultWaitTime);
         }
 
-        // --- 2. 핵심 피해 및 효과 적용 로직 ---
         List<GameObject> impactedTiles = GetActionImpactTiles(actionUser, actionTargetTile);
         foreach (var hitTile in impactedTiles)
         {
             UnitController victim = GridManager3D.instance.GetUnitAtPosition(hitTile.GetComponent<Tile3D>().gridPosition);
             if (victim != null && victim != actionUser)
             {
-                // 피해 적용
                 victim.TakeImpact(this.damage);
+
+                // ▼▼▼ [수정] VFXManager를 직접 호출하는 중복 코드를 제거했습니다. ▼▼▼
+                // 이제 모든 타격 시점의 이펙트는 아래의 ExecuteVFXByTiming이 전담합니다.
 
                 // 대상 적중 시 VFX 발생 (각 타겟마다)
                 ExecuteVFXByTiming(EffectTiming.OnTargetImpact, victim);
             }
         }
 
-        // 대상 적중 시 게임 효과 발생 (주 타겟 기준 1회)
         yield return ExecuteEffectsByTiming(EffectTiming.OnTargetImpact);
 
         if (animator != null) { animator.SetInteger("motionID", 0); }
 
-        // --- 3. 액션 종료 시점 ---
         ExecuteVFXByTiming(EffectTiming.OnActionEnd);
         yield return ExecuteEffectsByTiming(EffectTiming.OnActionEnd);
-
-        Debug.Log($"<color=red>ACTION: {actionUser.name} attack completed.</color>");
     }
 
-
-    /// <summary>
-    /// 3D 공간(XZ 평면)에서 공격 방향에 맞게 범위를 8방향으로 회전시킵니다.
-    /// </summary>
     private Vector3Int RotateVector(Vector3Int vector, Vector3Int direction)
     {
-        // 1. 방향 벡터의 각도를 계산합니다. (0도 = 오른쪽)
         float angle = Mathf.Atan2(direction.z, direction.x) * Mathf.Rad2Deg;
-
-        // 2. 각도를 45도 단위로 가장 가까운 8방향 각도로 '보정'합니다.
         int snappedAngle = Mathf.RoundToInt(angle / 45f) * 45;
 
-        // 3. 보정된 각도에 따라 벡터를 변환합니다.
         switch (snappedAngle)
         {
-            case 0:     // 오른쪽 (E)
-                return new Vector3Int(vector.z, 0, -vector.x);
-            case 45:    // 오른쪽 위 (NE)
-                return new Vector3Int(vector.x + vector.z, 0, vector.z - vector.x);
-            case 90:    // 위 (N)
-                return vector; // (x, 0, z) - 기준 방향
-            case 135:   // 왼쪽 위 (NW)
-                return new Vector3Int(vector.x - vector.z, 0, vector.x + vector.z);
-            case 180:   // 왼쪽 (W)
-            case -180:
-                return new Vector3Int(-vector.z, 0, vector.x);
-            case -135:  // 왼쪽 아래 (SW)
-                return new Vector3Int(-vector.x - vector.z, 0, -vector.z + vector.x);
-            case -90:   // 아래 (S)
-                return new Vector3Int(-vector.x, 0, -vector.z);
-            case -45:   // 오른쪽 아래 (SE)
-                return new Vector3Int(-vector.x + vector.z, 0, -vector.x - vector.z);
-            default:
-                return vector;
+            case 0: return new Vector3Int(vector.z, 0, -vector.x);
+            case 45: return new Vector3Int(vector.x + vector.z, 0, vector.z - vector.x);
+            case 90: return vector;
+            case 135: return new Vector3Int(vector.x - vector.z, 0, vector.x + vector.z);
+            case 180: case -180: return new Vector3Int(-vector.z, 0, vector.x);
+            case -135: return new Vector3Int(-vector.x - vector.z, 0, -vector.z + vector.x);
+            case -90: return new Vector3Int(-vector.x, 0, -vector.z);
+            case -45: return new Vector3Int(-vector.x + vector.z, 0, -vector.x - vector.z);
+            default: return vector;
         }
     }
 }
+

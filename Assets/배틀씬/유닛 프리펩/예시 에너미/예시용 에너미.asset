@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyName: "\uC608\uC2DC\uC6A9 \uC5D0\uB108\uBBF8"
   enemyPrefab: {fileID: 5691773571413991148, guid: 2d79e93a8668c3f43973a209737f87bb, type: 3}
   maxHealth: 100
-  actionsPerTurn: 3
+  actionsPerTurn: 2
   actionPattern:
   - actionName: "\uC774\uB3D9"
     movementType: 0

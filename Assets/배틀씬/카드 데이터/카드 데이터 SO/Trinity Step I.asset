@@ -14,8 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cardID: 1
   cardName: Trinity Step I
-  cardImage: {fileID: 21300000, guid: 240fd3ed7512dab4abac0cd7726da097, type: 3}
-  description: 'Trinity Step I: Celestial'
+  cardImage: {fileID: 21300000, guid: 9b77cd77c8f1be142a14650decb6b611, type: 3}
+  description: 'Trinity Step I: Celestial
+
+    [Move][Knockback]'
   intentPredictionRange:
   - {x: 1, y: 0, z: 0}
   - {x: 0, y: 0, z: 1}

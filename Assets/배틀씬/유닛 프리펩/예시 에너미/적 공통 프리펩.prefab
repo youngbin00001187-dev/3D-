@@ -191,7 +191,7 @@ MonoBehaviour:
   maxHealth: 100
   currentHealth: 0
   currentState: 0
-  maxActionsPerTurn: 1
+  maxActionsPerTurn: 2
   currentTile: {fileID: 0}
   hitColor: {r: 1, g: 0, b: 0, a: 1}
   hitColorDuration: 0.15
