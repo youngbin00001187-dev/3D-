@@ -262,6 +262,7 @@ Transform:
   - {fileID: 385227443}
   - {fileID: 1379605182}
   - {fileID: 1189767152}
+  - {fileID: 835256081}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &152438364
@@ -1118,7 +1119,7 @@ RectTransform:
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
   m_AnchoredPosition: {x: 20, y: -20}
-  m_SizeDelta: {x: 151.54, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0, y: 1}
 --- !u!114 &806091257
 MonoBehaviour:
@@ -1233,6 +1234,52 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_HorizontalFit: 2
   m_VerticalFit: 2
+--- !u!1 &835256080
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 835256081}
+  - component: {fileID: 835256082}
+  m_Layer: 0
+  m_Name: ProjectileManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &835256081
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 835256080}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 151283761}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &835256082
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 835256080}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f4d4fb974ac7b934081b3c25815cb4fd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  projectilePrefabs:
+  - {fileID: 7412838673410717852, guid: 0f080f804983ddb4e937ffc664b77469, type: 3}
 --- !u!1 &890520844
 GameObject:
   m_ObjectHideFlags: 0
@@ -2218,6 +2265,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 90abb05bb73ea4d438c59546295a5797, type: 2}
   - {fileID: 11400000, guid: f1c15fdcd889ccb459b48ccd78ee6a42, type: 2}
   - {fileID: 11400000, guid: 5842594f9e0a8c44abadc6f297ab0f21, type: 2}
+  - {fileID: 11400000, guid: fabd6d2534b544a43bd5aa9a02f48210, type: 2}
   nextEncounter: {fileID: 11400000, guid: 84bfcb51b2fb80540bc04e905275d00d, type: 2}
 --- !u!1 &1737258667
 GameObject:

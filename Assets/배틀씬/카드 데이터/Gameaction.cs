@@ -51,16 +51,22 @@ public abstract class GameAction
 
     public IEnumerator Execute()
     {
-        // [신규] 액션 실행 전, 사용자의 스턴 상태를 확인합니다.
+        // 스턴 상태일 경우, 행동을 실행하지 않고 즉시 종료합니다.
         if (!actionUser.ProcessStunStatus())
         {
-            // ProcessStunStatus가 false를 반환하면 (행동 불가),
-            // 카운터만 감소시키고 액션을 즉시 종료합니다.
             yield break;
         }
 
-        // 스턴 상태가 아닐 경우에만 원래의 행동을 실행합니다.
+        // 1. 실제 행동(공격, 이동 등)을 실행하고 끝날 때까지 기다립니다.
         yield return InternalExecute();
+
+        // ▼▼▼ [신규] 바로 이 부분입니다! ▼▼▼
+        // 2. 행동이 모두 끝난 후, 만약 이 행동의 사용자가 EnemyController라면,
+        //    자신의 의도 표시를 지우도록 명령합니다.
+        if (actionUser is EnemyController enemy)
+        {
+            enemy.ClearIntentDisplay();
+        }
     }
 
     protected abstract IEnumerator InternalExecute();

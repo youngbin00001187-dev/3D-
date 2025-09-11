@@ -396,21 +396,28 @@ public class CardManager : MonoBehaviour
         }
     }
 
+    // CardManager.cs 파일의 UpdateTargetingAura 메서드를 아래 코드로 교체하세요.
+
     private void UpdateTargetingAura(CardDataSO cardData)
     {
         if (_highlightManager == null || playerController == null || cardData == null) return;
+
         _highlightManager.ClearAllHighlightsOfType(HighlightManager.HighlightType.PlayerPreview);
-        if (cardData.intentPredictionRange.Count > 0)
+
+        // [핵심 수정] cardData의 intentPredictionRange 대신,
+        // 카드에 들어있는 첫 번째 GameAction에게 직접 타겟 범위를 물어봅니다.
+        if (cardData.actionSequence != null && cardData.actionSequence.Count > 0)
         {
-            List<GameObject> targetableTiles = new List<GameObject>();
-            Vector3Int playerPos = playerController.GetGridPosition();
-            foreach (var vector in cardData.intentPredictionRange)
+            // 카드의 첫 번째 액션을 가져옵니다.
+            GameAction primaryAction = cardData.actionSequence[0];
+            if (primaryAction != null)
             {
-                GameObject tile = GridManager3D.instance.GetTileAtPosition(playerPos + vector);
-                if (tile != null) targetableTiles.Add(tile);
+                // 해당 액션의 GetTargetableTiles 메서드를 호출하여 고유한 타겟 범위를 가져옵니다.
+                List<GameObject> targetableTiles = primaryAction.GetTargetableTiles(playerController);
+
+                _currentPreviewTiles = targetableTiles.Select(t => t.GetComponent<Tile3D>()).Where(t => t != null).ToList();
+                _highlightManager.AddHighlight(_currentPreviewTiles, HighlightManager.HighlightType.PlayerPreview);
             }
-            _currentPreviewTiles = targetableTiles.Select(t => t.GetComponent<Tile3D>()).Where(t => t != null).ToList();
-            _highlightManager.AddHighlight(_currentPreviewTiles, HighlightManager.HighlightType.PlayerPreview);
         }
     }
 
@@ -451,7 +458,7 @@ public class CardManager : MonoBehaviour
         if (clickedTile3D == null || !_currentPreviewTiles.Contains(clickedTile3D)) yield break;
 
         CardDataSO cardToUse = _targetingCard;
-        QueuedAction newAction = new QueuedAction { User = playerController, SourceCard = cardToUse, TargetTile = targetTile };
+        QueuedAction newAction = new QueuedAction { User = playerController, SourceCard = cardToUse, TargetTile = targetTile, RelativeVector = null };
 
         if (ActionTurnManager.Instance.IsProcessingQueue)
         {

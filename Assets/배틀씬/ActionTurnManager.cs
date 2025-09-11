@@ -79,14 +79,32 @@ public class ActionTurnManager : MonoBehaviour
 
                 if (action.User != null)
                 {
-                    Animator animator = action.User.GetComponent<Animator>();
-                    Debug.Log($"<color=purple>[인터럽트 액션 실행]</color> 유닛: {action.User.name}, 카드: {action.SourceCard.cardName}");
-                    foreach (GameAction gameAction in action.SourceCard.actionSequence)
+                    // ▼▼▼ [수정] 최종 목표 타일 계산 로직 추가 ▼▼▼
+                    GameObject finalTargetTile = action.TargetTile;
+                    if (action.RelativeVector.HasValue)
                     {
-                        gameAction.Prepare(action.User, action.TargetTile);
-                        yield return StartCoroutine(gameAction.Execute());
+                        Vector3Int targetPos = action.User.GetGridPosition() + action.RelativeVector.Value;
+                        finalTargetTile = GridManager3D.instance.GetTileAtPosition(targetPos);
                     }
-                    if (animator != null) animator.SetInteger("motionID", 0);
+
+                    if (finalTargetTile != null)
+                    {
+                        // ▼▼▼ [수정] 캐싱된 UnitAnimator 사용 ▼▼▼
+                        Animator animator = action.User.UnitAnimator;
+                        Debug.Log($"<color=purple>[인터럽트 액션 실행]</color> 유닛: {action.User.name}, 카드: {action.SourceCard.cardName}");
+
+                        foreach (GameAction gameAction in action.SourceCard.actionSequence)
+                        {
+                            // ▼▼▼ [수정] 계산된 최종 타겟 전달 ▼▼▼
+                            gameAction.Prepare(action.User, finalTargetTile);
+                            yield return StartCoroutine(gameAction.Execute());
+                        }
+                        if (animator != null) animator.SetInteger("motionID", 0);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"[ActionTurnManager] 최종 타겟 계산 실패 (인터럽트): {action.User.name} on {action.SourceCard.cardName}");
+                    }
                 }
                 if (_interruptQueue.Count > 0)
                 {
@@ -111,7 +129,7 @@ public class ActionTurnManager : MonoBehaviour
 
         while (_normalQueue.Count > 0 || _interruptQueue.Count > 0)
         {
-            // --- 수정안 1: 인터럽트 -> 통상 전환 딜레이 ---
+            // --- 인터럽트 큐 처리 ---
             if (_interruptQueue.Count > 0)
             {
                 yield return StartCoroutine(ProcessInterruptQueue());
@@ -122,6 +140,7 @@ public class ActionTurnManager : MonoBehaviour
                 }
             }
 
+            // --- 통상 큐 처리 ---
             if (_normalQueue.Count > 0)
             {
                 QueuedAction action = _normalQueue.Dequeue();
@@ -133,19 +152,38 @@ public class ActionTurnManager : MonoBehaviour
 
                 if (action.User != null)
                 {
-                    Animator animator = action.User.GetComponent<Animator>();
-                    Debug.Log($"<color=cyan>[통상 액션 실행]</color> 유닛: {action.User.name}, 카드: {action.SourceCard.cardName}");
-                    foreach (GameAction gameAction in action.SourceCard.actionSequence)
+                    // ▼▼▼ [수정] 최종 목표 타일 계산 로직 추가 ▼▼▼
+                    GameObject finalTargetTile = action.TargetTile;
+                    // 적처럼 RelativeVector가 있는 경우, 현재 위치를 기준으로 최종 목표를 다시 계산합니다.
+                    if (action.RelativeVector.HasValue)
                     {
-                        gameAction.Prepare(action.User, action.TargetTile);
-                        yield return StartCoroutine(gameAction.Execute());
+                        Vector3Int targetPos = action.User.GetGridPosition() + action.RelativeVector.Value;
+                        finalTargetTile = GridManager3D.instance.GetTileAtPosition(targetPos);
                     }
-                    if (animator != null) animator.SetInteger("motionID", 0);
+
+                    // 최종 목표 타일이 유효한 경우에만 액션을 실행합니다.
+                    if (finalTargetTile != null)
+                    {
+                        // UnitController에 캐싱된 Animator를 사용하는 것이 더 효율적입니다.
+                        Animator animator = action.User.UnitAnimator;
+                        Debug.Log($"<color=cyan>[통상 액션 실행]</color> 유닛: {action.User.name}, 카드: {action.SourceCard.cardName}");
+
+                        foreach (GameAction gameAction in action.SourceCard.actionSequence)
+                        {
+                            // 계산된 최종 타겟을 전달합니다.
+                            gameAction.Prepare(action.User, finalTargetTile);
+                            yield return StartCoroutine(gameAction.Execute());
+                        }
+
+                        if (animator != null) animator.SetInteger("motionID", 0);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"최종 타겟 계산 실패: {action.User.name} on {action.SourceCard.cardName}");
+                    }
                 }
 
-                // --- 수정안 2: 통상 -> 인터럽트 전환 딜레이 (사용자님 지적 사항 반영) ---
-                // 다음 행동이 인터럽트라도 최소한의 후딜레이를 보장하기 위해
-                // _interruptQueue.Count == 0 조건을 제거합니다.
+                // --- 후딜레이 처리 ---
                 if (_normalQueue.Count > 0)
                 {
                     yield return new WaitForSeconds(normalActionDelay);

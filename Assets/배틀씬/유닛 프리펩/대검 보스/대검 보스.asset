@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 77d2774c78d6d8a47bcfbaae58cc6e93, type: 3}
+  m_Name: "\uB300\uAC80 \uBCF4\uC2A4"
+  m_EditorClassIdentifier: 
+  enemyName: "\uB300\uAC80 \uBCF4\uC2A4"
+  enemyPrefab: {fileID: 5691773571413991148, guid: 6af342b26fce5d24e9501f39823bc139, type: 3}
+  maxHealth: 200
+  actionsPerTurn: 1
+  actionPattern:
+  - actionName: "\uB300\uAC80 \uC774\uB3D9"
+    movementType: 0
+    referenceCard: {fileID: 11400000, guid: 3d1d5912358aa5649b8be9680db2eca2, type: 2}
+  - actionName: "\uB300\uAC80 \uACF5\uACA9"
+    movementType: 0
+    referenceCard: {fileID: 11400000, guid: 4b4908e444d1c6a46911e1d0075d74a1, type: 2}

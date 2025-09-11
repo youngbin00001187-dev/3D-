@@ -158,22 +158,19 @@ public class EnemyController : UnitController
     {
         if (_plannedCard == null) return;
 
-        Vector3Int finalTargetPos = GetGridPosition() + _plannedRelativeVector;
-        GameObject finalTargetTile = GridManager3D.instance.GetTileAtPosition(finalTargetPos);
+        // Vector3Int finalTargetPos... 이 부분은 이제 ActionTurnManager가 담당합니다.
 
-        if (finalTargetTile != null)
+        QueuedAction action = new QueuedAction
         {
-            QueuedAction action = new QueuedAction
-            {
-                User = this,
-                SourceCard = _plannedCard,
-                TargetTile = finalTargetTile
-            };
+            User = this,
+            SourceCard = _plannedCard,
+            TargetTile = null, // 적은 절대 목표를 사용하지 않음
+            RelativeVector = _plannedRelativeVector // 대신 상대 방향을 전달
+        };
 
-            if (ActionTurnManager.Instance != null)
-            {
-                ActionTurnManager.Instance.AddActionToNormalQueue(action);
-            }
+        if (ActionTurnManager.Instance != null)
+        {
+            ActionTurnManager.Instance.AddActionToNormalQueue(action);
         }
     }
 

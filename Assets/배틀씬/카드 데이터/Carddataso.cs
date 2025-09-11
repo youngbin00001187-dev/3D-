@@ -15,13 +15,10 @@ public class CardDataSO : ScriptableObject
     [Tooltip("이 카드를 적이 사용하거나 플레이어가 호버할 때 표시될 예측 범위입니다.")]
     public List<Vector3Int> intentPredictionRange = new List<Vector3Int>();
 
-    // 심법 관련 필드는 제외합니다.
-
     [Header("카드 액션 시퀀스")]
     [SerializeReference]
     public List<GameAction> actionSequence = new List<GameAction>();
 
-    // ▼▼▼ 여기에 ContextMenu 기능 추가 ▼▼▼
     [ContextMenu("액션 시퀀스/Move Action 추가")]
     private void AddMoveAction()
     {
@@ -33,5 +30,11 @@ public class CardDataSO : ScriptableObject
     {
         actionSequence.Add(new AttackAction());
     }
-    // ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
+
+    // ▼▼▼ [추가] ▼▼▼
+    [ContextMenu("액션 시퀀스/Throw Action 추가")]
+    private void AddThrowAction()
+    {
+        actionSequence.Add(new ThrowAction());
+    }
 }
